@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 25,
         marginBottom: 50,
-        paddingBottom: 100,
+        paddingBottom: 15,
     },
     cardWrapper: {
         width: '48%',

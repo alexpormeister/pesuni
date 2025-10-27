@@ -1,6 +1,6 @@
-import { FontAwesome } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons'; // KORJATTU: Vaihdettu FontAwesome -> FontAwesome5
 import React from 'react';
-import { SafeAreaView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, StyleSheet, TouchableOpacity, View } from 'react-native'; // Lisätty Text
 
 // Määritellään propsit, jotka komponentti ottaa vastaan.
 // Tämä mahdollistaa tilan hallinnan komponentin ulkopuolelta (esim. _layout.tsx-tiedostossa).
@@ -13,8 +13,8 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChange }) =
     // Navigaatiopainikkeiden tiedot
     const navItems = [
         { id: 'home', iconName: 'home' as const },
-        { id: 'orders', iconName: 'inbox' as const },
-        { id: 'profile', iconName: 'user' as const },
+        { id: 'orders', iconName: 'washing-machine' as const }, // KORJATTU: 'inbox' -> 'washing-machine'
+        { id: 'profile', iconName: 'account' as const },
     ];
 
     return (
@@ -32,11 +32,12 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChange }) =
                             // Kutsutaan annettua onTabChange-funktiota, kun painiketta painetaan
                             onPress={() => onTabChange(item.id)}
                         >
-                            <FontAwesome
+                            <MaterialCommunityIcons // KORJATTU: FontAwesome -> FontAwesome5
                                 name={item.iconName}
                                 size={28}
                                 // Vaihdetaan väriä sen perusteella, onko välilehti aktiivinen
-                                color={isActive ? '#3b82f6' : '#9ca3af'}
+                                color={isActive ? '#4da3e0ff' : '#9ca3af'}
+                                solid
                             />
                         </TouchableOpacity>
                     );
@@ -81,4 +82,3 @@ const styles = StyleSheet.create({
 });
 
 export default BottomNavBar;
-
