@@ -1,6 +1,7 @@
 import { Tabs, useRouter, useSegments } from 'expo-router';
 import React from 'react';
-import BottomNavBar from "../components/BottomNavBar"; // Varmista, että polku on oikea
+// Varmista, että polku on oikea (luultavasti ../../../)
+import BottomNavBar from "../components/BottomNavBar";
 
 export default function TabLayout() {
   const router = useRouter();
@@ -9,11 +10,14 @@ export default function TabLayout() {
   // Funktio, joka käsittelee navigointia, kun alapalkin nappia painetaan
   const handleTabChange = (tabId: string) => {
     if (tabId === 'home') {
-      router.push('/'); // Navigoi juureen -> app/index.tsx
+      // KORJATTU: Käytä juuripolkua '/'
+      router.push({ pathname: '/' });
     } else if (tabId === 'orders') {
-      router.push('/washes'); // Navigoi -> app/washes.tsx
+      // KORJATTU: Käytä reitin nimeä
+      router.push({ pathname: '/washes' });
     } else if (tabId === 'profile') {
-      router.push('/profile');
+      // KORJATTU: Käytä reitin nimeä
+      router.push({ pathname: '/profile' });
     }
   };
 
@@ -41,9 +45,8 @@ export default function TabLayout() {
         />
       )}
     >
-      {/* Määritellään välilehdet. Nimet vastaavat tiedostonimiä app-kansiossa.
-        Esim. 'index' viittaa 'app/index.tsx'-tiedostoon.
-        'headerShown: false' piilottaa oletusotsikkopalkin.
+      {/* KORJATTU: Nimi "home" muutettu muotoon "index" vastaamaan
+        tiedostonimeä app/(tabs)/index.tsx.
       */}
       <Tabs.Screen name="index" options={{ headerShown: false }} />
       <Tabs.Screen name="washes" options={{ headerShown: false }} />

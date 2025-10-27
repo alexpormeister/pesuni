@@ -1,50 +1,53 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native'; // Varmista, että Text on tuotu
+import { useRouter } from 'expo-router'; // 1. Tuotu useRouter navigointia varten
+import React from 'react'; // Siirretty ylimmäksi
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 // Tuodaan tarvittavat komponentit
-import BottomNavBar from "../components/BottomNavBar";
+// POISTETTU BottomNavBar-tuonti, koska layout-tiedosto hoitaa sen
 import HomeHeader from "../components/home/HomeHeader";
 import LocationBar from "../components/home/LocationBar";
 import ServiceGrid from "../components/home/ServiceGrid";
 
-// --- 1. LUO TARVITTAVA DATA TÄNNE ---
-// Tämä data-array sisältää kaikki tiedot, jotka ServiceGrid tarvitsee korttien luomiseen.
-// Huom: Varmista, että kuvien polut (require(...)) ovat oikein sinun projektissasi!
+// Data palveluille, varmista että polut ovat oikein ja käytä require()-funktiota
 const SERVICES_DATA = [
     {
         id: 1,
         name: 'Pyykkipesu',
-        imagePath: ('../assets/images/pyykkipesu.png'), // Oletuspolku, muokkaa tarvittaessa
-        backgroundColor: '#f0f8ff', // Esimerkkiväri, vaalea sininen
+        imagePath: require('../assets/images/pyykki.png'), // KORJATTU
+        backgroundColor: '#f0f8ff',
     },
     {
         id: 2,
         name: 'Lakanapyykki',
-        imagePath: ('../../assets/images/lakanapyykki.png'),
+        imagePath: require('../assets/images/lakana.png'), // KORJATTU
         backgroundColor: '#f0f8ff',
     },
     {
         id: 3,
         name: 'Kenkäpesu',
-        imagePath: ('../../assets/images/kenkapesu.png'),
+        imagePath: require('../assets/images/kenka.png'), // KORJATTU
         backgroundColor: '#f0f8ff',
     },
     {
         id: 4,
         name: 'Mattopesu',
-        imagePath: ('../../assets/images/mattopesu.png'),
+        imagePath: require('../assets/images/matto.png'), // KORJATTU
         backgroundColor: '#f0f8ff',
     },
 ];
 
 export default function HomeScreen() {
+    // 2. Alustetaan router
+    const router = useRouter();
 
     const handleStartWash = () => {
         console.log("Aloita Pesu painettu! Navigoi pesutilauksen luontiin.");
     };
 
-    const handleLocationPress = () => {
-        console.log("Osoitetta painettu! Avaa osoitteen valitsin.");
+    // 3. Uusi funktio, joka navigoi profiilisivulle
+    const handleGoToProfile = () => {
+        console.log("Navigoidaan profiiliin...");
+        router.push('/profile'); // Olettaen, että profiilisivusi on '/profile'
     };
 
     const handleCartPress = () => {
@@ -59,20 +62,25 @@ export default function HomeScreen() {
 
                 {/* 2. Osoite- ja ostoskoripalkki */}
                 <LocationBar
-                    onLocationPress={handleLocationPress}
+                    // 4. Annettu uusi propi vanhan 'onLocationPress'-propin sijaan
+                    onAddNewAddress={handleGoToProfile}
                     onCartPress={handleCartPress}
                 />
 
                 {/* 3. Muu sisältö (valkoinen alue) alkaa tästä */}
                 <Text style={styles.mainTitle}>Valitse Pesusi</Text>
 
-                {/* 4. Palveluruudukko, jolle annetaan nyt data 'services'-propsin kautta */}
+                {/* 4. Palveluruudukko */}
                 <ServiceGrid services={SERVICES_DATA} />
-            </ScrollView>
-            <BottomNavBar activeTab={''} onTabChange={function (tabId: string): void {
-                throw new Error('Function not implemented.');
-            }}></BottomNavBar>
 
+                {/* Lisätty tyhjää tilaa scrollin alaosaan, 
+                    jotta sisältö ei jää BottomNavBarrin alle piiloon */}
+                <View style={{ height: 100 }} />
+
+            </ScrollView>
+
+            {/* 5. POISTETTU BottomNavBar täältä. 
+                'app/(tabs)/_layout.tsx' hoitaa sen näyttämisen. */}
         </View>
     );
 }
@@ -91,5 +99,5 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         textAlign: "center",
     },
-
 });
+
