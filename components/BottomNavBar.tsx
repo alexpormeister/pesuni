@@ -33,9 +33,6 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChange }) =
                                 name={item.iconName}
                                 size={28}
                                 color={isActive ? '#4da3e0ff' : '#9ca3af'}
-                            // KORJAUS: Tämä rivi on poistettu, 
-                            // koska se ei kuulu MaterialCommunityIcons-kirjastoon
-                            // solid 
                             />
                         </TouchableOpacity>
                     );
