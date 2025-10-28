@@ -4,34 +4,34 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 // Tuodaan tarvittavat komponentit
 // POISTETTU BottomNavBar-tuonti, koska layout-tiedosto hoitaa sen
-import HomeHeader from "../components/home/HomeHeader";
-import LocationBar from "../components/home/LocationBar";
-import ServiceGrid from "../components/home/ServiceGrid";
+import HomeHeader from "../../components/home/HomeHeader";
+import LocationBar from "../../components/home/LocationBar";
+import ServiceGrid from "../../components/home/ServiceGrid";
 
 // Data palveluille, varmista että polut ovat oikein ja käytä require()-funktiota
 const SERVICES_DATA = [
     {
         id: 1,
         name: 'Pyykkipesu',
-        imagePath: require('../assets/images/pyykki.png'), // KORJATTU
+        imagePath: require('../../assets/images/pyykki.png'), // KORJATTU
         backgroundColor: '#f0f8ff',
     },
     {
         id: 2,
         name: 'Lakanapyykki',
-        imagePath: require('../assets/images/lakana.png'), // KORJATTU
+        imagePath: require('../../assets/images/lakana.png'), // KORJATTU
         backgroundColor: '#f0f8ff',
     },
     {
         id: 3,
         name: 'Kenkäpesu',
-        imagePath: require('../assets/images/kenka.png'), // KORJATTU
+        imagePath: require('../../assets/images/kenka.png'), // KORJATTU
         backgroundColor: '#f0f8ff',
     },
     {
         id: 4,
         name: 'Mattopesu',
-        imagePath: require('../assets/images/matto.png'), // KORJATTU
+        imagePath: require('../../assets/images/matto.png'), // KORJATTU
         backgroundColor: '#f0f8ff',
     },
 ];
@@ -79,8 +79,7 @@ export default function HomeScreen() {
 
             </ScrollView>
 
-            {/* 5. POISTETTU BottomNavBar täältä. 
-                'app/(tabs)/_layout.tsx' hoitaa sen näyttämisen. */}
+
         </View>
     );
 }

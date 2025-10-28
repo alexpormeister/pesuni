@@ -3,7 +3,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 
 // Tuodaan EmptyCart-komponentti. Varmista, että polku on oikea.
-import EmptyCart from "../components/washes/EmptyCart";
+import EmptyCart from "../../components/washes/EmptyCart";
 
 // Tämä on WashesScreen-sivu, joka näyttää tilauskorin tilan.
 export default function WashesScreen() {

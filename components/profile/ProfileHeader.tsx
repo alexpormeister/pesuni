@@ -1,34 +1,103 @@
 import { FontAwesome5 } from '@expo/vector-icons';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// KORJATTU: Tuotu useState ja useEffect
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// LISÄTTY: Tuotu Supabase-client
+import { supabase } from '../../lib/supabase';
 
 // Profiilikuva on edelleen paikallinen tiedosto
 const PROFILE_IMAGE = require('../../assets/images/pesuni-basket.png'); // Varmista, että polku on oikein
 
 interface ProfileHeaderProps {
-    name: string;
+    // POISTETTU: 'name' poistettu propseista
+    // name: string; 
     profileImageUrl?: string;
     onEditPress?: () => void;
-    onLogoutPress?: () => void; // Uusi prop uloskirjautumisikonille
+    onLogoutPress?: () => void;
 }
 
-const ProfileHeader: React.FC<ProfileHeaderProps> = ({ name, profileImageUrl, onEditPress, onLogoutPress }) => {
+// KORJATTU: 'name' poistettu propseista
+const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPress, onLogoutPress }) => {
     const imageSource = profileImageUrl ? { uri: profileImageUrl } : PROFILE_IMAGE;
+
+    // LISÄTTY: Tila ladatulle nimelle ja lataustilalle
+    const [fullName, setFullName] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                setLoading(true);
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error("Käyttäjää ei löytynyt");
+
+                // LOG 1: Mikä on kirjautuneen käyttäjän ID?
+                // console.log("VIANETSINTÄ: Haetaan profiilia ID:llä:", user.id); 
+
+                const { data, error, status } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    // KORJATTU: Kohdistetaan kysely 'user_id'-sarakkeeseen
+                    .eq('user_id', user.id)
+                    .single();
+
+                // LOG 2: Mitä Supabase palautti?
+                // console.log("VIANETSINTÄ: Datan haku palautti:", data);
+                // console.log("VIANETSINTÄ: Virhe oli:", error);
+
+                if (error && status !== 406) {
+                    throw error;
+                }
+
+                if (data) {
+                    setFullName(data.full_name);
+                } else {
+                    // console.warn("VIANETSINTÄ: Data palasi, mutta oli 'null'. TARKISTA RLS-SÄÄNNÖT.");
+                }
+            } catch (error) {
+                if (error instanceof Error) {
+                    // console.error("VIANETSINTÄ: Virhe catch-lohkossa:", error.message);
+                    Alert.alert('Virhe profiilia haettaessa', error.message);
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, []);
+
+    const handleLogoutPress = () => {
+        Alert.alert(
+            "Vahvista uloskirjautuminen", // Otsikko
+            "", // Tyhjä viesti
+            [
+                {
+                    text: "Peruuta",
+                    onPress: () => console.log("Uloskirjautuminen peruutettu"),
+                    style: "cancel"
+                },
+                {
+                    text: "Kirjaudu ulos",
+                    onPress: onLogoutPress,
+                    style: "destructive"
+                }
+            ]
+        );
+    };
 
     return (
         <View style={styles.outerContainer}>
             {/* Yläosa: Profiili-teksti ja uloskirjautumisikoni */}
             <View style={styles.topBar}>
                 <Text style={styles.profileText}>Profiili</Text>
-                <TouchableOpacity style={styles.logoutIconContainer} onPress={onLogoutPress}>
-                    {/* ----- Uloskirjautumisikoni ----- */}
+                <TouchableOpacity style={styles.logoutIconContainer} onPress={handleLogoutPress}>
                     <FontAwesome5 name="sign-out-alt" size={24} color="#E85D5D" />
                 </TouchableOpacity>
             </View>
 
             {/* Valkoinen kortti profiilikuvalle */}
             <View style={styles.card}>
-                {/* Profiilikuva ja muokkausikoni */}
                 <View style={styles.profileImageWrapper}>
                     <Image
                         source={imageSource}
@@ -38,25 +107,29 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ name, profileImageUrl, on
                         <FontAwesome5 name="pencil-alt" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
-                <Text style={styles.nameText}>{name}</Text>
+                {/* KORJATTU: Näytetään nimi tilasta (state) tai latausteksti */}
+                <Text style={styles.nameText}>
+                    {loading ? 'Ladataan...' : (fullName || 'Käyttäjä')}
+                </Text>
             </View>
         </View>
     );
 };
 
+// Tyylit pysyvät samoina
 const styles = StyleSheet.create({
     outerContainer: {
         alignItems: 'center',
-        backgroundColor: '#F7F7F7', // Tausta profiilikuvan yläpuolella (voi olla myös jokin muu väri)
-        paddingBottom: 20, // Antaa tilaa nimelle alapuolella
+        backgroundColor: '#F7F7F7',
+        paddingBottom: 20,
     },
     topBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        width: '90%', // Sama leveys kuin kortilla
-        paddingTop: 20, // Tilaa ylhäällä
-        marginBottom: 0, // Poistaa välin card-komponenttiin
+        width: '90%',
+        paddingTop: 20,
+        marginBottom: 0,
     },
     profileText: {
         fontSize: 18,
@@ -64,17 +137,17 @@ const styles = StyleSheet.create({
         color: '#000',
     },
     logoutIconContainer: {
-        padding: 5, // Antaa hieman osumapinta-alaa ikonille
+        padding: 5,
     },
     card: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 15, // Hieman pyöreämmät kulmat kuin edellisessä
+        borderRadius: 15,
         width: '90%',
-        minHeight: 120, // Minimi korkeus kortille
-        marginTop: 20, // Nostaa korttia ylöspäin
+        minHeight: 120,
+        marginTop: 20,
         paddingHorizontal: 20,
-        alignItems: 'center', // Keskittää sisällön vaakasuunnassa
-        justifyContent: 'flex-end', // Painaa profiilikuvan alareunaan
+        alignItems: 'center',
+        justifyContent: 'flex-end',
         shadowColor: "#000",
         shadowOffset: {
             width: 0,
@@ -85,36 +158,36 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     profileImageWrapper: {
-        position: 'absolute', // Profiilikuva ulkonee kortista
-        top: -60, // Nostaa profiilikuvaa puoliksi kortin yläpuolelle (puolet kuvan korkeudesta)
+        position: 'absolute',
+        top: -60,
         alignItems: 'center',
     },
     profileImage: {
         width: 100,
         height: 100,
         borderRadius: 60,
-        borderWidth: 4, // Hieman paksumpi reuna
-        borderColor: '#F7F7F7', // Ympäröivän taustan väri, jotta "erottuu"
-        backgroundColor: '#DDD', // Taustaväri, jos kuvaa ei ladata
+        borderWidth: 4,
+        borderColor: '#F7F7F7',
+        backgroundColor: '#DDD',
     },
     editIconContainer: {
         position: 'absolute',
-        bottom: 0, // Nyt on profiilikuvan alareunassa
-        right: 0, // Ja oikeassa reunassa
+        bottom: 0,
+        right: 0,
         backgroundColor: '#4A4A4A',
         borderRadius: 20,
         width: 38,
         height: 38,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 2, // Lisää reunuksen
-        borderColor: '#F7F7F7', // Sama kuin tausta
+        borderWidth: 2,
+        borderColor: '#F7F7F7',
     },
     nameText: {
         fontSize: 22,
         fontWeight: 'bold',
         color: '#000',
-        marginBottom: 15, // Antaa tilaa profiilikuvan ja kortin yli
+        marginBottom: 15,
     },
 });
 

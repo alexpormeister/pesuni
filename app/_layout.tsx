@@ -1,57 +1,55 @@
-import { Tabs, useRouter, useSegments } from 'expo-router';
-import React from 'react';
-// Varmista, että polku on oikea (luultavasti ../../../)
-import BottomNavBar from "../components/BottomNavBar";
+// Tiedosto: app/_layout.tsx
+import { Session } from '@supabase/supabase-js';
+import { Slot, useRouter, useSegments } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase'; // Varmista oikea polku
 
-export default function TabLayout() {
-  const router = useRouter();
-  const segments = useSegments(); // Hakee nykyisen reitin osat
+function useAuthGuard() {
+    const [session, setSession] = useState<Session | null>(null);
+    const [loading, setLoading] = useState(true);
+    const router = useRouter();
+    const segments = useSegments();
 
-  // Funktio, joka käsittelee navigointia, kun alapalkin nappia painetaan
-  const handleTabChange = (tabId: string) => {
-    if (tabId === 'home') {
-      // KORJATTU: Käytä juuripolkua '/'
-      router.push({ pathname: '/' });
-    } else if (tabId === 'orders') {
-      // KORJATTU: Käytä reitin nimeä
-      router.push({ pathname: '/washes' });
-    } else if (tabId === 'profile') {
-      // KORJATTU: Käytä reitin nimeä
-      router.push({ pathname: '/profile' });
-    }
-  };
+    useEffect(() => {
+        // Hae sessio käynnistyessä
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setLoading(false);
+        });
 
-  // Funktio, joka määrittää aktiivisen välilehden nykyisen reitin perusteella
-  const getActiveTab = () => {
-    const currentRoute = segments[segments.length - 1] || 'index';
-    if (currentRoute === 'washes') {
-      return 'orders';
-    }
-    if (currentRoute === 'profile') {
-      return 'profile';
-    }
-    // Oletuksena palautetaan 'home' juurireitille ('index')
-    return 'home';
-  };
+        // Kuuntele muutoksia (kuten SIGN_OUT)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+        });
 
-  return (
-    <Tabs
-      // tabBar-propsilla kerrotaan, että haluamme renderöidä oman
-      // custom-komponenttimme oletusnavigaation sijaan.
-      tabBar={() => (
-        <BottomNavBar
-          activeTab={getActiveTab()}
-          onTabChange={handleTabChange}
-        />
-      )}
-    >
-      {/* KORJATTU: Nimi "home" muutettu muotoon "index" vastaamaan
-        tiedostonimeä app/(tabs)/index.tsx.
-      */}
-      <Tabs.Screen name="index" options={{ headerShown: false }} />
-      <Tabs.Screen name="washes" options={{ headerShown: false }} />
-      <Tabs.Screen name="profile" options={{ headerShown: false }} />
-    </Tabs>
-  );
+        return () => subscription?.unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        if (loading) return; // Älä tee mitään, kun tarkistetaan
+
+        const inAuthRoute = segments[0] === 'auth';
+
+        if (!session && !inAuthRoute) {
+            // Ei sessiota -> pakota kirjautumissivulle
+            router.replace('/auth/login');
+        } else if (session && inAuthRoute) {
+            // On sessio (mutta ollaan auth-sivulla) -> pakota etusivulle
+            router.replace('/');
+        }
+
+    }, [session, loading, segments, router]);
+
+    return { loading };
 }
 
+export default function RootLayout() {
+    const { loading } = useAuthGuard();
+
+    if (loading) {
+        return null; // Tai latausindikaattori
+    }
+
+    // Slot renderöi joko /auth/login TAI (tabs)-ryhmän
+    return <Slot />;
+}

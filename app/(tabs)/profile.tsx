@@ -1,17 +1,23 @@
 import React from 'react';
 import { Alert, SafeAreaView, StyleSheet, View } from 'react-native';
-import LocationDisplay from "../components/profile/LocationDisplay";
-import ProfileHeader from '../components/profile/ProfileHeader';
-import SettingsList from "../components/profile/SettingsList";
-import StatsBar from "../components/profile/StatsBar";
+import LocationDisplay from "../../components/profile/LocationDisplay";
+import ProfileHeader from '../../components/profile/ProfileHeader';
+import SettingsList from "../../components/profile/SettingsList";
+import StatsBar from "../../components/profile/StatsBar";
+import { supabase } from '../../lib/supabase';
 
 const ProfileScreen = () => {
     const handleEditPress = () => {
         Alert.alert("Muokkaa painettu", "Tässä voisi avata profiilin muokkausnäkymän.");
     };
 
-    const handleLogoutPress = () => {
-        Alert.alert("Uloskirjautuminen", "Oletko varma, että haluat kirjautua ulos?");
+    const handleLogoutPress = async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            Alert.alert("Virhe", error.message);
+        }
+        // Sinun ei tarvitse tehdä muuta. App.tsx hoitaa 
+        // automaattisesti paluun login-sivulle.
     };
 
     const handleLocationPress = () => {

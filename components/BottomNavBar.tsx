@@ -1,43 +1,41 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons'; // KORJATTU: Vaihdettu FontAwesome -> FontAwesome5
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
-import { SafeAreaView, StyleSheet, TouchableOpacity, View } from 'react-native'; // Lisätty Text
+import { SafeAreaView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-// Määritellään propsit, jotka komponentti ottaa vastaan.
-// Tämä mahdollistaa tilan hallinnan komponentin ulkopuolelta (esim. _layout.tsx-tiedostossa).
 interface BottomNavBarProps {
     activeTab: string;
     onTabChange: (tabId: string) => void;
 }
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChange }) => {
-    // Navigaatiopainikkeiden tiedot
+
+    // Voit myös tulostaa tämän nähdäksesi, että saat oikean arvon _layout-tiedostosta
+    // console.log("Aktiivinen välilehti:", activeTab); 
+
     const navItems = [
         { id: 'home', iconName: 'home' as const },
-        { id: 'orders', iconName: 'washing-machine' as const }, // KORJATTU: 'inbox' -> 'washing-machine'
+        { id: 'orders', iconName: 'washing-machine' as const },
         { id: 'profile', iconName: 'account' as const },
     ];
 
     return (
-        // SafeAreaView varmistaa, ettei sisältö mene laitteen käyttöliittymäelementtien,
-        // kuten iPhonen alareunan "viivan", alle.
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
                 {navItems.map((item) => {
-                    // Tarkistetaan, onko tämä painike aktiivinen propsien perusteella
                     const isActive = activeTab === item.id;
                     return (
                         <TouchableOpacity
                             key={item.id}
                             style={styles.navButton}
-                            // Kutsutaan annettua onTabChange-funktiota, kun painiketta painetaan
                             onPress={() => onTabChange(item.id)}
                         >
-                            <MaterialCommunityIcons // KORJATTU: FontAwesome -> FontAwesome5
+                            <MaterialCommunityIcons
                                 name={item.iconName}
                                 size={28}
-                                // Vaihdetaan väriä sen perusteella, onko välilehti aktiivinen
                                 color={isActive ? '#4da3e0ff' : '#9ca3af'}
-                                solid
+                            // KORJAUS: Tämä rivi on poistettu, 
+                            // koska se ei kuulu MaterialCommunityIcons-kirjastoon
+                            // solid 
                             />
                         </TouchableOpacity>
                     );
