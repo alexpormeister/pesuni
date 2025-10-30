@@ -1,21 +1,22 @@
-import { Feather } from '@expo/vector-icons'; // Tuotu ikonikirjasto
+import { Feather, FontAwesome } from '@expo/vector-icons'; // LISÄTTY: FontAwesome
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Alert,
     AppState,
     AppStateStatus,
-    Image, // Tuotu Image
-    KeyboardAvoidingView, // Estää näppäimistöä peittämästä kenttiä
+    Image,
+    KeyboardAvoidingView,
     Platform,
-    SafeAreaView, // Tuotu SafeAreaView
-    StatusBar, // Tuotu StatusBar
+    SafeAreaView,
+    StatusBar,
     StyleSheet,
-    Text, // Tuotu Text
-    TextInput, // Tuotu TextInput
-    TouchableOpacity, // Tuotu TouchableOpacity
+    Text,
+    TextInput,
+    TouchableOpacity,
     View,
 } from 'react-native';
-// POISTETTU: react-native-elements, koska teemme täysin kustomoidun ulkoasun
 import { supabase } from '../../lib/supabase';
 
 // Supabasen AppState-kuuntelija pysyy ennallaan
@@ -27,13 +28,13 @@ AppState.addEventListener('change', (state: AppStateStatus) => {
     }
 })
 
-export default function Auth() {
-    // Nämä pysyvät täysin ennallaan
+export default function LoginScreen() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const router = useRouter();
 
-    // Tämä logiikka pysyy täysin ennallaan
+    // signInWithEmail-funktio pysyy ennallaan
     async function signInWithEmail() {
         setLoading(true)
         const { error } = await supabase.auth.signInWithPassword({
@@ -45,44 +46,42 @@ export default function Auth() {
         setLoading(false)
     }
 
-    // Tämä logiikka pysyy täysin ennallaan
-    async function signUpWithEmail() {
-        setLoading(true)
-        const {
-            data: { session },
-            error,
-        } = await supabase.auth.signUp({
-            email: email,
-            password: password,
-        })
-
-        if (error) Alert.alert(error.message)
-        if (!session) Alert.alert('Please check your inbox for email verification!')
-        setLoading(false)
+    // Tähän voisi myöhemmin lisätä social login -funktiot
+    async function signInWithProvider(provider: 'google' | 'apple' | 'facebook') {
+        Alert.alert(`Toteutetaan ${provider} kirjautuminen myöhemmin!`);
+        // Esimerkkikoodi (vaatii lisäasetuksia Supabasessa ja Expossa):
+        // setLoading(true);
+        // const { error } = await supabase.auth.signInWithOAuth({
+        //   provider: provider,
+        // });
+        // if (error) Alert.alert(error.message);
+        // setLoading(false);
     }
 
+
     return (
-        // SafeAreaView varmistaa, ettei sisältö mene yläreunan loven alle
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="light-content" />
-
-            {/* KeyboardAvoidingView siirtää sisältöä ylös, kun näppäimistö avautuu */}
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.container}
             >
                 {/* --- YLÄOSA (SININEN) --- */}
-                <View style={styles.blueContainer}>
-                    <Image
-                        // VAIHDA TÄHÄN OIKEA POLKU LOGOOSI
-                        source={require('../../assets/images/pesuni-basket.png')}
-                        style={styles.logo}
-                        resizeMode="contain"
-                    />
-                    <Text style={styles.title}>PESUNI</Text>
-                    <Text style={styles.subtitle}>PUHDASTA ARKEA</Text>
-
-                    {/* Input-kentät */}
+                <LinearGradient
+                    colors={['#87CEFA', '#5EA8E0', '#4A90D3']}
+                    style={styles.blueContainer}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                >
+                    <View style={styles.topContent}>
+                        <Image
+                            source={require('../../assets/images/pesuni-basket.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
+                        <Text style={styles.title}>PESUNI</Text>
+                        <Text style={styles.subtitle}>PUHDASTA ARKEA</Text>
+                    </View>
                     <View style={styles.inputArea}>
                         <View style={styles.inputContainer}>
                             <Feather name="user" size={20} color="#6b7280" style={styles.icon} />
@@ -105,15 +104,15 @@ export default function Auth() {
                                 value={password}
                                 onChangeText={(text: string) => setPassword(text)}
                                 autoCapitalize="none"
-                                secureTextEntry // Piilottaa salasanan
+                                secureTextEntry
                             />
                         </View>
                     </View>
-                </View>
+                </LinearGradient>
 
                 {/* --- ALAOSA (VALKOINEN KORTTI) --- */}
                 <View style={styles.whiteCard}>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push('/auth/forgotPassword')}>
                         <Text style={styles.forgotPassword}>Forgot Password?</Text>
                     </TouchableOpacity>
 
@@ -126,12 +125,39 @@ export default function Auth() {
                         <Text style={styles.loginButtonText}>{loading ? 'Loading...' : 'Login'}</Text>
                     </TouchableOpacity>
 
-                    <Text style={styles.orText}>or</Text>
+                    <Text style={styles.orText}>or continue with</Text>
+
+                    {/* LISÄTTY: Social Login -painikkeet */}
+                    <View style={styles.socialLoginContainer}>
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={() => signInWithProvider('google')}
+                            disabled={loading}
+                        >
+                            <FontAwesome name="google" size={24} color="#DB4437" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={() => signInWithProvider('apple')}
+                            disabled={loading}
+                        >
+                            <FontAwesome name="apple" size={24} color="#000000" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={() => signInWithProvider('facebook')}
+                            disabled={loading}
+                        >
+                            <FontAwesome name="facebook" size={24} color="#4267B2" />
+                        </TouchableOpacity>
+                    </View>
+                    {/* LISÄTTY OSUUS PÄÄTTYY */}
+
 
                     {/* Luo tili -nappi */}
                     <TouchableOpacity
                         style={styles.createButton}
-                        onPress={() => signUpWithEmail()}
+                        onPress={() => router.push("../auth/signup")}
                         disabled={loading}
                     >
                         <Text style={styles.createButtonText}>Create an account</Text>
@@ -142,22 +168,25 @@ export default function Auth() {
     )
 }
 
-// Tässä on kaikki uudet tyylit, jotka vastaavat kuvaa
+// Tyylit
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#87CEFA', // Koko taustan oletusväri (vaalea sininen)
+        backgroundColor: '#87CEFA',
     },
     container: {
         flex: 1,
+        position: 'relative',
     },
-    // --- SININEN YLÄOSA ---
     blueContainer: {
-        flex: 0.6, // Ottaa 60% näytön korkeudesta
-        backgroundColor: '#87CEFA', // Voit vaihtaa tämän tarkkaan siniseen
+        flex: 1,
+        backgroundColor: '#87CEFA',
         alignItems: 'center',
-        justifyContent: 'flex-end', // Painaa sisällön alaosaan
-        paddingBottom: 20,
+    },
+    topContent: {
+        alignItems: 'center',
+        paddingTop: '5%',
+        marginBottom: 30,
     },
     logo: {
         width: 150,
@@ -168,15 +197,15 @@ const styles = StyleSheet.create({
         fontSize: 50,
         fontWeight: 'bold',
         color: 'white',
-        fontFamily: 'Montserrat', // Voit vaihtaa fontin
-        textShadowColor: 'black, 0, 0, 0.3)', // Lisää tumma tekstivarjo
+        fontFamily: 'Montserrat',
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
         textShadowRadius: 1,
         textShadowOffset: { width: 0, height: 3 },
     },
     subtitle: {
         fontSize: 16,
         color: 'white',
-        letterSpacing: 1.5, // Lisää hieman väliä kirjaimiin
+        letterSpacing: 1.5,
         marginBottom: 25,
     },
     inputArea: {
@@ -185,10 +214,10 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)', // Hieman läpinäkyvä valkoinen
-        borderRadius: 30, // Täysin pyöristetyt kulmat
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 30,
         paddingHorizontal: 20,
-        paddingVertical: Platform.OS === 'ios' ? 15 : 12, // iOS tarvitsee enemmän tilaa
+        paddingVertical: Platform.OS === 'ios' ? 15 : 12,
         marginBottom: 15,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.7)',
@@ -201,45 +230,48 @@ const styles = StyleSheet.create({
         color: '#333',
         fontSize: 16,
     },
-    // --- VALKOINEN ALAOSA ---
     whiteCard: {
-        marginBottom: -50,
-        flex: 0.4, // Ottaa 40% näytön korkeudesta
+        position: 'absolute',
+        bottom: -50,
+        left: 0,
+        right: 0,
         backgroundColor: 'white',
-        borderTopLeftRadius: 30, // Pyöristys vain yläkulmiin
-        borderTopRightRadius: 30,
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
         paddingHorizontal: 30,
+        paddingTop: 30,
+        paddingBottom: 80,
         alignItems: 'center',
         justifyContent: 'center',
+        // POISTETTU: height: '40%', jotta sisältö mahtuu
     },
     forgotPassword: {
-        color: '#6b7280', // Harmaa teksti
+        color: '#6b7280',
         fontSize: 14,
         marginBottom: 20,
-        marginTop: -50,
     },
     loginButton: {
-        backgroundColor: '#fbd679', // Keltainen väri
+        backgroundColor: '#fbd679',
         paddingVertical: 15,
         borderRadius: 30,
         width: '100%',
         alignItems: 'center',
         marginBottom: 15,
-        shadowColor: "#000", // Lisätty pieni varjo
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 3.84,
         elevation: 5,
     },
     loginButtonText: {
-        color: '#333', // Tumma teksti
+        color: '#333',
         fontSize: 16,
         fontWeight: 'bold',
     },
     orText: {
-        color: '#9ca3af', // Vaaleanharmaa
+        color: '#9ca3af',
         fontSize: 14,
-        marginBottom: 15,
+        marginVertical: 15, // MUOKATTU: Lisää tilaa ylä- ja alapuolelle
     },
     createButton: {
         backgroundColor: 'white',
@@ -248,11 +280,36 @@ const styles = StyleSheet.create({
         width: '100%',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#d1d5db', // Vaalea harmaa reunus
+        borderColor: '#d1d5db',
+        marginTop: 15, // LISÄTTY: Tilaa some-painikkeiden yläpuolelta
     },
     createButtonText: {
         color: '#333',
         fontSize: 16,
         fontWeight: 'bold',
     },
+
+    // --- LISÄTTY: Social Login -tyylit ---
+    socialLoginContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        width: '100%',
+    },
+    socialButton: {
+        backgroundColor: 'white',
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 25, // Pyöreä
+        width: 50,
+        height: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginHorizontal: 12, // Väliä painikkeiden välille
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    // --- LISÄTTYJEN TYYLIEN LOPPU ---
 })

@@ -20,8 +20,9 @@ interface ProfileHeaderProps {
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPress, onLogoutPress }) => {
     const imageSource = profileImageUrl ? { uri: profileImageUrl } : PROFILE_IMAGE;
 
-    // LISÄTTY: Tila ladatulle nimelle ja lataustilalle
-    const [fullName, setFullName] = useState<string | null>(null);
+    // LISÄTTY: Tilat etunimelle, sukunimelle ja lataustilalle
+    const [firstName, setFirstName] = useState<string | null>(null);
+    const [lastName, setLastName] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -36,21 +37,17 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPr
 
                 const { data, error, status } = await supabase
                     .from('profiles')
-                    .select('full_name')
-                    // KORJATTU: Kohdistetaan kysely 'user_id'-sarakkeeseen
+                    .select('first_name, last_name')
                     .eq('user_id', user.id)
                     .single();
-
-                // LOG 2: Mitä Supabase palautti?
-                // console.log("VIANETSINTÄ: Datan haku palautti:", data);
-                // console.log("VIANETSINTÄ: Virhe oli:", error);
 
                 if (error && status !== 406) {
                     throw error;
                 }
 
                 if (data) {
-                    setFullName(data.full_name);
+                    setFirstName(data.first_name);
+                    setLastName(data.last_name);
                 } else {
                     // console.warn("VIANETSINTÄ: Data palasi, mutta oli 'null'. TARKISTA RLS-SÄÄNNÖT.");
                 }
@@ -109,7 +106,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPr
                 </View>
                 {/* KORJATTU: Näytetään nimi tilasta (state) tai latausteksti */}
                 <Text style={styles.nameText}>
-                    {loading ? 'Ladataan...' : (fullName || 'Käyttäjä')}
+                    {loading ? 'Ladataan...' : (firstName && lastName ? `${firstName} ${lastName}` : 'Käyttäjä')}
                 </Text>
             </View>
         </View>

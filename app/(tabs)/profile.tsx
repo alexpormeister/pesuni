@@ -68,9 +68,8 @@ const ProfileScreen = () => {
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
                 <ProfileHeader
-                    name="Mikko Mallikas"
                     onEditPress={handleEditPress}
-                    onLogoutPress={handleLogoutPress}
+                    onLogoutPress={() => { handleLogoutPress(); }}
                 />
 
                 {/* 👇 ADD THIS WRAPPER VIEW 👇 */}
