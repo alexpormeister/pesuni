@@ -1,5 +1,3 @@
-// Tiedosto: app/(tabs)/_layout.tsx
-// KORJATTU: Tuodaan 'usePathname'
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import React from 'react';
 import BottomNavBar from "../../components/BottomNavBar";
@@ -7,7 +5,6 @@ import BottomNavBar from "../../components/BottomNavBar";
 export default function TabLayout() {
   const router = useRouter();
 
-  // KORJATTU: Käytetään 'usePathname', joka palauttaa polun merkkijonona (esim. "/", "/washes")
   const pathname = usePathname();
 
   const handleTabChange = (tabId: string) => {
@@ -21,10 +18,6 @@ export default function TabLayout() {
   };
 
   const getActiveTab = () => {
-    // KORJATTU: Tarkistetaan suoraan polun nimeä
-
-    // Voit lisätä tämän rivin nähdäksesi konsolissa, mitä polkua se lukee:
-    // console.log("Nykyinen polku:", pathname); 
 
     if (pathname === '/washes') {
       return 'orders';
@@ -32,7 +25,6 @@ export default function TabLayout() {
     if (pathname === '/profile') {
       return 'profile';
     }
-    // Kaikissa muissa tapauksissa (pääasiassa '/')
     return 'home';
   };
 
@@ -40,7 +32,6 @@ export default function TabLayout() {
     <Tabs
       tabBar={() => (
         <BottomNavBar
-          // getActiveTab() palauttaa nyt luotettavasti oikean ID:n
           activeTab={getActiveTab()}
           onTabChange={handleTabChange}
         />

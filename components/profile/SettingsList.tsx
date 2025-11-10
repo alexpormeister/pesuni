@@ -1,12 +1,11 @@
-import { FontAwesome5 } from '@expo/vector-icons'; // Käytämme Font Awesome 5 -ikoneita
+import { FontAwesome5 } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-// Määritellään tyypit TypeScriptiä varten, jotta koodi on selkeämpää
 type SettingItem = {
     id: string;
     label: string;
-    icon: string; // FontAwesome5-ikonin nimi
+    icon: string;
     onPress: () => void;
 };
 
@@ -25,7 +24,6 @@ const SettingsList: React.FC<SettingsListProps> = ({ title, items }) => {
                         key={item.id}
                         style={[
                             styles.itemRow,
-                            // Poistetaan alareuna viimeiseltä kohteelta
                             index === items.length - 1 && styles.lastItemRow
                         ]}
                         onPress={item.onPress}
@@ -56,7 +54,7 @@ const styles = StyleSheet.create({
     listContainer: {
         backgroundColor: '#FFFFFF',
         borderRadius: 15,
-        overflow: 'hidden', // Varmistaa, että reunat pysyvät pyöreinä
+        overflow: 'hidden',
         shadowColor: "#000",
         shadowOffset: {
             width: 0,
@@ -72,17 +70,17 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0', // Hienovarainen erotinviiva
+        borderBottomColor: '#F0F0F0',
     },
     lastItemRow: {
-        borderBottomWidth: 0, // Poistaa viimeisen viivan
+        borderBottomWidth: 0,
     },
     icon: {
-        width: 30, // Antaa tilaa ikonille
+        width: 30,
         textAlign: 'center',
     },
     itemText: {
-        flex: 1, // Varmistaa, että teksti täyttää tilan
+        flex: 1,
         marginLeft: 15,
         fontSize: 17,
         color: '#000000',

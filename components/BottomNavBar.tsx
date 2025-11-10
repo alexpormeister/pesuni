@@ -9,9 +9,6 @@ interface BottomNavBarProps {
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChange }) => {
 
-    // Voit myös tulostaa tämän nähdäksesi, että saat oikean arvon _layout-tiedostosta
-    // console.log("Aktiivinen välilehti:", activeTab); 
-
     const navItems = [
         { id: 'home', iconName: 'home' as const },
         { id: 'orders', iconName: 'washing-machine' as const },
@@ -44,32 +41,30 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChange }) =
 
 const styles = StyleSheet.create({
     safeArea: {
-        // Kiinnitetään komponentti näytön alaosaan
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
         backgroundColor: 'white',
-        // Lisätään siisti reunaviiva ja varjo yläreunaan
         borderTopWidth: 1,
-        borderTopColor: '#e5e7eb', // Vaalea harmaa
+        borderTopColor: '#e5e7eb',
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: -2, // Varjo ylöspäin
+            height: -2,
         },
         shadowOpacity: 0.05,
         shadowRadius: 3.84,
-        elevation: 5, // Varjo Androidille
+        elevation: 5,
     },
     container: {
         flexDirection: 'row',
         justifyContent: 'space-around',
         alignItems: 'center',
-        height: 60, // Navigaatiopalkin korkeus
+        height: 60,
     },
     navButton: {
-        flex: 1, // Varmistaa, että painikkeet jakavat tilan tasan
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',

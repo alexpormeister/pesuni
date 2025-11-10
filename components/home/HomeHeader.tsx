@@ -5,22 +5,17 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 const COLORS = {
     primary: '#005D97',
     white: 'white',
-    gradientStart: '#8ed6ff', // Vaaleampi sininen
-    gradientEnd: '#4da3e0ff',   // Tummempi sininen
+    gradientStart: '#8ed6ff',
+    gradientEnd: '#4da3e0ff',
 };
 
-// Varmista, että tämä polku on oikea projektissasi
 const BasketImage = require("../../assets/images/pesuni-basket.png");
 
-// 1. Määritellään propsien interface
 interface HomeHeaderProps {
-    /** Funktio, joka kutsutaan "Aloita Pesu" -painiketta painettaessa. */
     onStartPress: () => void;
 }
 
-// 2. Liitetään interface HomeHeader-funktioon
 const HomeHeader: React.FC<HomeHeaderProps> = ({ onStartPress }) => {
-    // KORJAUS: Korvataan <View style={styles.header}> LinearGradient-komponentilla
     return (
         <LinearGradient
             start={{ x: 0, y: 0 }}
@@ -49,7 +44,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ onStartPress }) => {
     );
 }
 
-export default HomeHeader; // Exportataan komponentti
+export default HomeHeader;
 
 const styles = StyleSheet.create({
     header: {

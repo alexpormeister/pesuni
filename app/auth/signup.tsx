@@ -1,12 +1,12 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Checkbox } from 'expo-checkbox'; // Käytetään nimettyä tuontia
+import { Checkbox } from 'expo-checkbox';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Alert,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView, // Tuodaan SafeAreaView
+    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
@@ -27,8 +27,6 @@ export default function SignUpScreen() {
     const router = useRouter();
 
     async function signUpWithEmail() {
-        // ... (signUpWithEmail-funktio pysyy samana) ...
-        // Tarkistukset
         if (password !== retypePassword) {
             Alert.alert("Salasanat eivät täsmää");
             return;
@@ -58,36 +56,26 @@ export default function SignUpScreen() {
             Alert.alert(error.message);
         } else if (data.session) {
             Alert.alert('Rekisteröinti onnistui!', 'Tarkista sähköpostisi vahvistaaksesi tilisi.');
-            // Voit halutessasi ohjata käyttäjän login-sivulle:
-            // router.replace('/auth/login');
         } else if (data.user) {
             Alert.alert('Rekisteröinti onnistui!', 'Tarkista sähköpostisi vahvistaaksesi tilisi.');
-            // Voit halutessasi ohjata käyttäjän login-sivulle:
-            // router.replace('/auth/login');
         }
         setLoading(false);
     }
 
 
     return (
-        // KORJATTU: Annetaan SafeAreaView:lle sininen taustaväri
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="light-content" />
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.container}
             >
-                {/* --- YLÄOSA (SININEN) --- */}
-                {/* topContainer ei tarvitse enää omaa backgroundColorta, koska SafeArea hoitaa sen */}
                 <View style={styles.topContainer}>
                     <Text style={styles.title}>Rekisteröidy Käyttäjäksi</Text>
                     <Text style={styles.subtitle}>Kohti puhtaampaa arkea</Text>
                 </View>
 
-                {/* --- ALAOSA (VALKOINEN) --- */}
-                {/* bottomContainer saa nyt oman valkoisen taustansa */}
                 <View style={styles.bottomContainer}>
-                    {/* ... (inputit, checkbox ja napit pysyvät samoina) ... */}
                     <View style={styles.inputContainer}>
                         <Feather name="user" size={20} color="#6b7280" style={styles.icon} />
                         <TextInput
@@ -147,9 +135,8 @@ export default function SignUpScreen() {
                         />
                     </View>
 
-                    {/* Checkbox */}
                     <View style={styles.checkboxContainer}>
-                        <Checkbox // Käytetään oletustuontia
+                        <Checkbox
                             style={styles.checkbox}
                             value={agreeToTerms}
                             onValueChange={setAgreeToTerms}
@@ -163,7 +150,6 @@ export default function SignUpScreen() {
                         </View>
                     </View>
 
-                    {/* Sign Up -nappi */}
                     <TouchableOpacity
                         style={styles.signupButton}
                         onPress={signUpWithEmail}
@@ -172,7 +158,6 @@ export default function SignUpScreen() {
                         <Text style={styles.signupButtonText}>{loading ? 'Loading...' : 'Sign Up'}</Text>
                     </TouchableOpacity>
 
-                    {/* Linkki takaisin kirjautumiseen */}
                     <TouchableOpacity onPress={() => router.replace('/auth/login')}>
                         <Text style={styles.signInLink}>
                             Have an account? <Text style={styles.linkText}>Sign In</Text>
@@ -187,16 +172,13 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        // KORJATTU: Annetaan SafeAreaView:lle sininen tausta
         backgroundColor: '#7BCFFF',
     },
     container: {
         flex: 1,
     },
     topContainer: {
-        // POISTETTU: backgroundColor: '#7BCFFF',
         padding: 30,
-        // KORJATTU: Säädetty ylä-paddingia hieman, jotta teksti ei mene status barin alle
         paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 20 : 50,
         paddingBottom: 50,
         borderBottomLeftRadius: 30,
@@ -215,20 +197,19 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     bottomContainer: {
-        flex: 1, // Varmistaa, että tämä täyttää loput tilasta
-        // LISÄTTY: Valkoinen tausta tälle osalle
+        flex: 1,
         backgroundColor: 'white',
         paddingHorizontal: 30,
         paddingTop: 40,
-        paddingBottom: 50, // Add extra padding at bottom
+        paddingBottom: 50,
         alignItems: 'center',
-        marginBottom: -50, // Pull container down to cover any gaps
+        marginBottom: -50,
     },
-    // ... (loput tyyleistä pysyvät samoina) ...
+
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F3F4F6', // Vaaleanharmaa tausta
+        backgroundColor: '#F3F4F6',
         borderRadius: 25,
         paddingHorizontal: 20,
         paddingVertical: Platform.OS === 'ios' ? 15 : 12,

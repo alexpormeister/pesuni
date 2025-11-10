@@ -9,10 +9,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-// Make sure this path is correct for your project
+import { useDispatch } from 'react-redux';
+import { addToCart } from '../../redux/cartSlice';
+
 import { supabase } from '../../lib/supabase';
 
-// --- TYPE DEFINITIONS ---
 interface Product {
     product_id: string;
     name: string;
@@ -22,13 +23,12 @@ interface Product {
 }
 
 interface Category {
-    id: string; // This is the uuid
+    id: string;
     name: string;
-    category_id: string; // This is the text id
+    category_id: string;
     products: Product[];
 }
 
-// --- FILTER OPTIONS ---
 const FILTER_OPTIONS = [
     'Kaikki palvelut',
     'Arjen pyykit',
@@ -37,9 +37,16 @@ const FILTER_OPTIONS = [
     'Kengät & Erikoispesut',
 ];
 
-// --- Product Card Component ---
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+    const dispatch = useDispatch();
+
     const handleAddToCart = () => {
+        dispatch(addToCart({
+            id: product.product_id,
+            name: product.name,
+            price: product.base_price,
+            // image: product.image_url //Ehkä lisätään kuva myöhemmin
+        }));
         console.log(`Lisätty ostoskoriin: ${product.name}`);
     };
 
@@ -64,8 +71,6 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         </View>
     );
 };
-
-
 
 type ServiceGridProps = {
     ListHeaderComponent?: React.ReactNode;
@@ -155,8 +160,6 @@ const ServiceGrid: React.FC<ServiceGridProps> = ({ ListHeaderComponent }) => {
             />
         </View>
     );
-
-    // Main Render 
 
     if (loading) {
         return (

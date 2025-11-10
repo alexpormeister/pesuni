@@ -28,12 +28,11 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        backgroundColor: "white", // Vaalea beige väri kuvasta
+        backgroundColor: "white",
         borderRadius: 15,
         paddingVertical: 20,
-        width: '90%', // Sama leveys kuin ProfileHeaderin kortilla
+        width: '90%',
         marginTop: 10,
-        // Lisätään hienovarainen varjo
         shadowColor: "#000",
         shadowOffset: {
             width: 0,
@@ -44,8 +43,8 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     statItem: {
-        alignItems: 'center', // Keskittää numeron ja tekstin pystysuunnassa
-        flex: 1, // Varmistaa, että molemmat vievät yhtä paljon tilaa
+        alignItems: 'center',
+        flex: 1,
     },
     statNumber: {
         fontSize: 22,
@@ -55,7 +54,7 @@ const styles = StyleSheet.create({
     },
     statLabel: {
         fontSize: 14,
-        color: '#8A8A8A', // Pehmeä harmaa väri
+        color: '#8A8A8A',
     },
 });
 

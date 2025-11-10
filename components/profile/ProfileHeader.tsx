@@ -1,26 +1,19 @@
 import { FontAwesome5 } from '@expo/vector-icons';
-// KORJATTU: Tuotu useState ja useEffect
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// LISÄTTY: Tuotu Supabase-client
 import { supabase } from '../../lib/supabase';
 
-// Profiilikuva on edelleen paikallinen tiedosto
 const PROFILE_IMAGE = require('../../assets/images/pesuni-basket.png'); // Varmista, että polku on oikein
 
 interface ProfileHeaderProps {
-    // POISTETTU: 'name' poistettu propseista
-    // name: string; 
     profileImageUrl?: string;
     onEditPress?: () => void;
     onLogoutPress?: () => void;
 }
 
-// KORJATTU: 'name' poistettu propseista
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPress, onLogoutPress }) => {
     const imageSource = profileImageUrl ? { uri: profileImageUrl } : PROFILE_IMAGE;
 
-    // LISÄTTY: Tilat etunimelle, sukunimelle ja lataustilalle
     const [firstName, setFirstName] = useState<string | null>(null);
     const [lastName, setLastName] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -31,9 +24,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPr
                 setLoading(true);
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) throw new Error("Käyttäjää ei löytynyt");
-
-                // LOG 1: Mikä on kirjautuneen käyttäjän ID?
-                // console.log("VIANETSINTÄ: Haetaan profiilia ID:llä:", user.id); 
 
                 const { data, error, status } = await supabase
                     .from('profiles')
@@ -49,11 +39,9 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPr
                     setFirstName(data.first_name);
                     setLastName(data.last_name);
                 } else {
-                    // console.warn("VIANETSINTÄ: Data palasi, mutta oli 'null'. TARKISTA RLS-SÄÄNNÖT.");
                 }
             } catch (error) {
                 if (error instanceof Error) {
-                    // console.error("VIANETSINTÄ: Virhe catch-lohkossa:", error.message);
                     Alert.alert('Virhe profiilia haettaessa', error.message);
                 }
             } finally {
@@ -66,8 +54,8 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPr
 
     const handleLogoutPress = () => {
         Alert.alert(
-            "Vahvista uloskirjautuminen", // Otsikko
-            "", // Tyhjä viesti
+            "Vahvista uloskirjautuminen",
+            "",
             [
                 {
                     text: "Peruuta",
@@ -85,7 +73,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPr
 
     return (
         <View style={styles.outerContainer}>
-            {/* Yläosa: Profiili-teksti ja uloskirjautumisikoni */}
             <View style={styles.topBar}>
                 <Text style={styles.profileText}>Profiili</Text>
                 <TouchableOpacity style={styles.logoutIconContainer} onPress={handleLogoutPress}>
@@ -93,7 +80,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPr
                 </TouchableOpacity>
             </View>
 
-            {/* Valkoinen kortti profiilikuvalle */}
             <View style={styles.card}>
                 <View style={styles.profileImageWrapper}>
                     <Image
@@ -104,7 +90,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPr
                         <FontAwesome5 name="pencil-alt" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
-                {/* KORJATTU: Näytetään nimi tilasta (state) tai latausteksti */}
                 <Text style={styles.nameText}>
                     {loading ? 'Ladataan...' : (firstName && lastName ? `${firstName} ${lastName}` : 'Käyttäjä')}
                 </Text>
@@ -113,7 +98,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profileImageUrl, onEditPr
     );
 };
 
-// Tyylit pysyvät samoina
 const styles = StyleSheet.create({
     outerContainer: {
         alignItems: 'center',

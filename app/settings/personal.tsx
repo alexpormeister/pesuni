@@ -6,13 +6,13 @@ import { supabase } from '../../lib/supabase';
 
 export default function Account({ session }: { session: Session }) {
     const [loading, setLoading] = useState(true)
-    // Korjattu: Muutettu state-muuttujat vastaamaan tietokantaasi
     const [phone, setPhone] = useState('')
     const [address, setAddress] = useState('')
     const [profileImage, setProfileImage] = useState('')
 
     useEffect(() => {
         if (session) getProfile()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session])
 
     async function getProfile() {
@@ -20,10 +20,9 @@ export default function Account({ session }: { session: Session }) {
             setLoading(true)
             if (!session?.user) throw new Error('No user on the session!')
 
-            // Korjattu: Haetaan oikeat sarakkeet tietokannasta
             const { data, error, status } = await supabase
                 .from('profiles')
-                .select(`phone, address, profile_image`) // <--- TÄMÄ MUUTETTU
+                .select(`phone, address, profile_image`)
                 .eq('id', session?.user.id)
                 .single()
             if (error && status !== 406) {
@@ -31,7 +30,6 @@ export default function Account({ session }: { session: Session }) {
             }
 
             if (data) {
-                // Korjattu: Asetetaan data oikeisiin state-muuttujiin
                 setPhone(data.phone)
                 setAddress(data.address)
                 setProfileImage(data.profile_image)
@@ -48,7 +46,7 @@ export default function Account({ session }: { session: Session }) {
     async function updateProfile({
         phone,
         address,
-        profile_image, // Korjattu: Argumentit vastaamaan tietokantaa
+        profile_image,
     }: {
         phone: string
         address: string
@@ -58,7 +56,6 @@ export default function Account({ session }: { session: Session }) {
             setLoading(true)
             if (!session?.user) throw new Error('No user on the session!')
 
-            // Korjattu: Luodaan päivitysobjekti oikeilla sarakkeilla
             const updates = {
                 id: session?.user.id,
                 phone,
@@ -84,27 +81,20 @@ export default function Account({ session }: { session: Session }) {
     return (
         <View style={styles.container}>
             <View style={[styles.verticallySpaced, styles.mt20]}>
-                {/* Tämä pysyy samana, koska sähköposti tulee 'auth.users'-taulusta */}
                 <Input label="Email" value={session?.user?.email} disabled />
             </View>
 
-            {/* Korjattu: Muutettu 'Username' -> 'Phone' */}
             <View style={styles.verticallySpaced}>
                 <Input label="Phone" value={phone || ''} onChangeText={(text) => setPhone(text)} />
             </View>
 
-            {/* Korjattu: Muutettu 'Website' -> 'Address' */}
             <View style={styles.verticallySpaced}>
                 <Input label="Address" value={address || ''} onChangeText={(text) => setAddress(text)} />
             </View>
 
-            {/* Huom: 'profile_image' ei ole tässä tekstikenttänä, 
-                koska se on yleensä kuvan URL. Koodi päivittää sen silti. */}
-
             <View style={[styles.verticallySpaced, styles.mt20]}>
                 <Button
                     title={loading ? 'Loading ...' : 'Update'}
-                    // Korjattu: Lähetetään oikeat tiedot päivitysfunktiolle
                     onPress={() => updateProfile({ phone, address, profile_image: profileImage })}
                     disabled={loading}
                 />

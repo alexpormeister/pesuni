@@ -1,57 +1,48 @@
-import React, { useState } from 'react'; // Tuotu useState
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// Huom: Käytän Expo/React Native Vector Icons -kirjastoa (esim. Font Awesome)
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
-
+import React, { useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSelector } from 'react-redux';
+import { selectTotalCartItems } from '../../redux/cartSlice';
 const COLORS = {
     dark: '#333333',
     primary: '#005D97',
     secondary: '#5abaff',
     white: 'white',
-    lightGray: '#f0f0f0', // Lisätty
+    lightGray: '#f0f0f0',
 };
 
-// Kovakoodattu demo-data
 const DEFAULT_ADDRESS = "Koti, Arvelantie 5a";
-const CART_COUNT = 1;
 
 interface LocationBarProps {
-    /** Funktio, joka kutsutaan, kun käyttäjä painaa 'Lisää uusi osoite'. */
-    onAddNewAddress: () => void; // MUUTETTU: Tämä korvaa onLocationPress-propin
-    /** Funktio, joka kutsutaan, kun käyttäjä painaa ostoskoria. */
+    onAddNewAddress: () => void;
     onCartPress: () => void;
 }
 
 const LocationBar: React.FC<LocationBarProps> = ({ onAddNewAddress, onCartPress }) => {
-    // Tila, joka hallitsee alasvetovalikon näkyvyyttä
     const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
-    // Funktio, joka näyttää/piilottaa valikon
+    const cartCount = useSelector(selectTotalCartItems);
+
     const toggleDropdown = () => {
         setIsDropdownVisible(!isDropdownVisible);
     };
 
-    // Funktio, joka kutsutaan, kun "Lisää uusi osoite" painetaan
     const handleAddNewAddress = () => {
-        onAddNewAddress(); // Kutsuu parentilta (HomeScreen) saatua funktiota
-        setIsDropdownVisible(false); // Piilottaa valikon
+        onAddNewAddress();
+        setIsDropdownVisible(false);
     };
 
     return (
-        // Tämä wrapper-view sisältää sekä palkin että alasvetovalikon
-        // ja huolehtii päällekkäisyydestä (marginTop & zIndex)
         <View style={styles.wrapper}>
             <View style={styles.barContainer}>
-                {/* Vasen puoli: Sijainti/osoite */}
                 <TouchableOpacity
-                    onPress={toggleDropdown} // MUUTETTU: Kutsuu nyt toggleDropdown-funktiota
+                    onPress={toggleDropdown}
                     style={styles.locationButton}
                 >
                     <View style={styles.locationIconContainer}>
                         <FontAwesome5 name="home" size={16} color={COLORS.dark} />
                     </View>
                     <Text style={styles.locationText}>{DEFAULT_ADDRESS}</Text>
-                    {/* Ikoni vaihtuu alasvetovalikon tilan mukaan */}
                     <Feather
                         name={isDropdownVisible ? "chevron-up" : "chevron-down"}
                         size={16}
@@ -59,18 +50,16 @@ const LocationBar: React.FC<LocationBarProps> = ({ onAddNewAddress, onCartPress 
                     />
                 </TouchableOpacity>
 
-                {/* Oikea puoli: Ostoskori */}
                 <TouchableOpacity onPress={onCartPress} style={styles.cartButton}>
                     <Feather name="shopping-bag" size={24} color={COLORS.dark} />
-                    {CART_COUNT > 0 && (
+                    {cartCount > 0 && (
                         <View style={styles.cartBadge}>
-                            <Text style={styles.cartBadgeText}>{CART_COUNT}</Text>
+                            <Text style={styles.cartBadgeText}>{cartCount}</Text>
                         </View>
                     )}
                 </TouchableOpacity>
             </View>
 
-            {/* ALASVETOVALIKKO (Näytetään ehdollisesti) */}
             {isDropdownVisible && (
                 <View style={styles.dropdownContainer}>
                     <TouchableOpacity
@@ -89,11 +78,9 @@ const LocationBar: React.FC<LocationBarProps> = ({ onAddNewAddress, onCartPress 
 export default LocationBar;
 
 const styles = StyleSheet.create({
-    // UUSI: Wrapper, joka pitää sisällään palkin ja alasvetovalikon
     wrapper: {
-        marginTop: -40, // Nostaa koko komponentin headerin päälle
-        zIndex: 1, // Varmistaa, että se on muun sisällön yläpuolella
-        // Varjo (valinnainen, mutta näyttää hyvältä)
+        marginTop: -40,
+        zIndex: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -107,14 +94,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 25,
         paddingVertical: 15,
         backgroundColor: COLORS.white,
-        // HUOM: marginTop ja zIndex siirretty wrapper-tyyliin
     },
     locationButton: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 5,
-        flex: 1, // Antaa napille tilaa kasvaa
-        marginRight: 10, // Tilaa ostoskorinapille
+        flex: 1,
+        marginRight: 10,
     },
     locationIconContainer: {
         width: 30,
@@ -130,7 +116,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: COLORS.dark,
         marginRight: 4,
-        flexShrink: 1, // Estää tekstiä työntämästä nuolta ulos näytöltä
+        flexShrink: 1,
     },
     cartButton: {
         padding: 5,
@@ -154,7 +140,6 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: 'bold',
     },
-    // UUDET TYYLIT ALASVETOVALIKOLLE
     dropdownContainer: {
         backgroundColor: COLORS.white,
         paddingHorizontal: 25,

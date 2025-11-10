@@ -3,17 +3,14 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-// Otsikko-komponentti selkeyden vuoksi
 const SectionTitle = ({ title }: { title: string }) => (
     <Text style={styles.sectionTitle}>{title}</Text>
 );
 
-// Alaotsikko-komponentti
 const SubTitle = ({ title }: { title: string }) => (
     <Text style={styles.subTitle}>{title}</Text>
 );
 
-// Yleinen tekstikappale
 const Paragraph = ({ text }: { text: string }) => (
     <Text style={styles.paragraph}>{text}</Text>
 );
@@ -23,7 +20,6 @@ export default function TermsAndPrivacyScreen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            {/* Yläpalkki, jossa on paluunappi */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Feather name="chevron-left" size={24} color="#000" />
@@ -32,9 +28,6 @@ export default function TermsAndPrivacyScreen() {
             </View>
 
             <ScrollView style={styles.scrollView}>
-                {/* TÄMÄ ON VAIN MALLIPOHJA. 
-                  KORVAA KAIKKI TEKSTIT VIRALLISILLA, LAKIMIEHEN TARKISTAMILLA TEKSTEILLÄ.
-                */}
 
                 <SectionTitle title="Käyttöehdot" />
                 <Paragraph text={`Päivitetty viimeksi: [LISÄÄ PÄIVÄMÄÄRÄ]`} />
@@ -50,8 +43,6 @@ export default function TermsAndPrivacyScreen() {
 
                 <SubTitle title="4. Vastuunrajoitus (ERITTÄIN TÄRKEÄ)" />
                 <Paragraph text="Tämä on lakimiehen kanssa laadittava kohta. Mitä tapahtuu, jos vaate katoaa tai vaurioituu pesussa? Mikä on korvausvastuusi? Esimerkiksi: 'Pesuni noudattaa äärimmäistä huolellisuutta, mutta emme ole vastuussa normaalista kulumisesta, värin haalistumisesta tai aiemmin syntyneistä vaurioista. Korvausvastuumme kadonneesta tai vaurioituneesta vaatteesta rajoittuu [X] euroon per tuote.'" />
-
-                {/* --- Tietosuojaseloste alkaa --- */}
 
                 <SectionTitle title="Tietosuojaseloste" />
                 <Paragraph text={`Päivitetty viimeksi: [LISÄÄ PÄIVÄMÄÄRÄ]`} />

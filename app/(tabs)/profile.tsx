@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, SafeAreaView, StyleSheet, View } from 'react-native';
 import LocationDisplay from "../../components/profile/LocationDisplay";
@@ -7,8 +8,10 @@ import StatsBar from "../../components/profile/StatsBar";
 import { supabase } from '../../lib/supabase';
 
 const ProfileScreen = () => {
+    const router = useRouter();
+
     const handleEditPress = () => {
-        Alert.alert("Muokkaa painettu", "Tässä voisi avata profiilin muokkausnäkymän.");
+        router.push('/profile/personal-data');
     };
 
     const handleLogoutPress = async () => {
@@ -16,8 +19,6 @@ const ProfileScreen = () => {
         if (error) {
             Alert.alert("Virhe", error.message);
         }
-        // Sinun ei tarvitse tehdä muuta. App.tsx hoitaa 
-        // automaattisesti paluun login-sivulle.
     };
 
     const handleLocationPress = () => {
@@ -29,7 +30,7 @@ const ProfileScreen = () => {
             id: '1',
             label: 'Henkilötiedot',
             icon: 'user-alt',
-            onPress: () => Alert.alert('Henkilötiedot painettu'),
+            onPress: () => router.push('/profile/personal-data'),
         },
         {
             id: '2',
@@ -72,7 +73,6 @@ const ProfileScreen = () => {
                     onLogoutPress={() => { handleLogoutPress(); }}
                 />
 
-                {/* 👇 ADD THIS WRAPPER VIEW 👇 */}
                 <View style={styles.locationWrapper}>
                     <LocationDisplay onLocationPress={handleLocationPress} />
                 </View>
@@ -94,11 +94,10 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    // 👇 ADD THIS NEW STYLE 👇
     locationWrapper: {
-        width: '100%',         // The wrapper takes full width
-        alignItems: 'center',  // It centers its child (LocationDisplay)
-        marginTop: -25,         // Optional: Adds some space above it
+        width: '100%',
+        alignItems: 'center',
+        marginTop: -25,
     },
     stats: {
         alignItems: "center",

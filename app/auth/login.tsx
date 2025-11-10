@@ -1,4 +1,4 @@
-import { Feather, FontAwesome } from '@expo/vector-icons'; // LISÄTTY: FontAwesome
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -19,7 +19,6 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 
-// Supabasen AppState-kuuntelija pysyy ennallaan
 AppState.addEventListener('change', (state: AppStateStatus) => {
     if (state === 'active') {
         supabase.auth.startAutoRefresh()
@@ -34,7 +33,6 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false)
     const router = useRouter();
 
-    // signInWithEmail-funktio pysyy ennallaan
     async function signInWithEmail() {
         setLoading(true)
         const { error } = await supabase.auth.signInWithPassword({
@@ -46,7 +44,6 @@ export default function LoginScreen() {
         setLoading(false)
     }
 
-    // Tähän voisi myöhemmin lisätä social login -funktiot
     async function signInWithProvider(provider: 'google' | 'apple' | 'facebook') {
         Alert.alert(`Toteutetaan ${provider} kirjautuminen myöhemmin!`);
         // Esimerkkikoodi (vaatii lisäasetuksia Supabasessa ja Expossa):
@@ -66,7 +63,6 @@ export default function LoginScreen() {
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.container}
             >
-                {/* --- YLÄOSA (SININEN) --- */}
                 <LinearGradient
                     colors={['#87CEFA', '#5EA8E0', '#4A90D3']}
                     style={styles.blueContainer}
@@ -110,13 +106,11 @@ export default function LoginScreen() {
                     </View>
                 </LinearGradient>
 
-                {/* --- ALAOSA (VALKOINEN KORTTI) --- */}
                 <View style={styles.whiteCard}>
                     <TouchableOpacity onPress={() => router.push('/auth/forgotPassword')}>
                         <Text style={styles.forgotPassword}>Forgot Password?</Text>
                     </TouchableOpacity>
 
-                    {/* Kirjaudu-nappi */}
                     <TouchableOpacity
                         style={styles.loginButton}
                         onPress={() => signInWithEmail()}
@@ -127,7 +121,6 @@ export default function LoginScreen() {
 
                     <Text style={styles.orText}>or continue with</Text>
 
-                    {/* LISÄTTY: Social Login -painikkeet */}
                     <View style={styles.socialLoginContainer}>
                         <TouchableOpacity
                             style={styles.socialButton}
@@ -151,10 +144,8 @@ export default function LoginScreen() {
                             <FontAwesome name="facebook" size={24} color="#4267B2" />
                         </TouchableOpacity>
                     </View>
-                    {/* LISÄTTY OSUUS PÄÄTTYY */}
 
 
-                    {/* Luo tili -nappi */}
                     <TouchableOpacity
                         style={styles.createButton}
                         onPress={() => router.push("../auth/signup")}
@@ -168,7 +159,6 @@ export default function LoginScreen() {
     )
 }
 
-// Tyylit
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
@@ -243,7 +233,6 @@ const styles = StyleSheet.create({
         paddingBottom: 80,
         alignItems: 'center',
         justifyContent: 'center',
-        // POISTETTU: height: '40%', jotta sisältö mahtuu
     },
     forgotPassword: {
         color: '#6b7280',
@@ -271,7 +260,7 @@ const styles = StyleSheet.create({
     orText: {
         color: '#9ca3af',
         fontSize: 14,
-        marginVertical: 15, // MUOKATTU: Lisää tilaa ylä- ja alapuolelle
+        marginVertical: 15,
     },
     createButton: {
         backgroundColor: 'white',
@@ -281,7 +270,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#d1d5db',
-        marginTop: 15, // LISÄTTY: Tilaa some-painikkeiden yläpuolelta
+        marginTop: 15,
     },
     createButtonText: {
         color: '#333',
@@ -289,7 +278,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
 
-    // --- LISÄTTY: Social Login -tyylit ---
     socialLoginContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
@@ -299,17 +287,16 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderWidth: 1,
         borderColor: '#d1d5db',
-        borderRadius: 25, // Pyöreä
+        borderRadius: 25,
         width: 50,
         height: 50,
         alignItems: 'center',
         justifyContent: 'center',
-        marginHorizontal: 12, // Väliä painikkeiden välille
+        marginHorizontal: 12,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 2,
     },
-    // --- LISÄTTYJEN TYYLIEN LOPPU ---
-})
+});

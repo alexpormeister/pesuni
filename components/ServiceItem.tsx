@@ -1,10 +1,9 @@
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
-// Määritellään propsit, jotka komponentti ottaa vastaan
 interface ServiceItemProps {
     name: string;
-    imagePath: any; // Esim. require('../../assets/pyykkipesu.png')
+    imagePath: any;
     backgroundColor: string;
     onPress: () => void;
 }
@@ -20,13 +19,13 @@ const ServiceItem: React.FC<ServiceItemProps> = ({ name, imagePath, backgroundCo
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1, // Täyttää sille annetun tilan (cardWrapper)
+        flex: 1,
         borderRadius: 15,
         padding: 10,
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 3, // Pieni varjo Androidilla
-        shadowColor: '#000', // Varjo iOS:llä
+        elevation: 3,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 3,

@@ -1,4 +1,3 @@
-// Tiedosto: app/auth/forgotPassword.tsx
 import { Fontisto } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -86,7 +85,6 @@ export default function ForgotPasswordScreen() {
                         </View>
                     </View>
 
-                    {/* Palauta Salasana -nappi */}
                     <TouchableOpacity
                         style={styles.resetButton}
                         onPress={handlePasswordReset}
@@ -97,7 +95,6 @@ export default function ForgotPasswordScreen() {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* Linkki takaisin kirjautumiseen */}
                     <TouchableOpacity onPress={() => router.replace('/auth/login')}>
                         <Text style={styles.signInLink}>Kirjaudu Sisään</Text>
                     </TouchableOpacity>

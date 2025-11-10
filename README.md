@@ -1,50 +1,66 @@
-# Welcome to your Expo app 👋
+Pesuni
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Pesuni on React Native / Expo -pohjainen mobiilisovellus pesulapalveluiden helppoon ja nopeaan tilaamiseen. Sovellus hyödyntää Supabasea backendinä (autentikaatio, tietokanta) ja Redux Toolkitia sovelluksen tilanhallintaan (esim. ostoskori).
 
-## Get started
+Ominaisuudet
 
-1. Install dependencies
+Käyttäjän autentikaatio: Turvallinen kirjautuminen, rekisteröityminen ja salasanan palautus (Supabase Auth).
 
-   ```bash
-   npm install
-   ```
+Palveluiden selaus: Selaa tuotteita ja palveluita kategorioittain. Voit myös suodattaa näkymää löytääksesi juuri tarvitsemasi palvelun.
 
-2. Start the app
+Ostoskori: Reduxilla toteutettu reaaliaikainen ostoskori. Lisää tuotteita, muuta määriä ja poista tuotteita helposti. Ostoskorin sisältö säilyy sovelluksen käytön ajan.
 
-   ```bash
-   npx expo start
-   ```
+Profiili: Hallitse omia tietojasi. Voit tarkastella ja päivittää nimesi, sähköpostiosoitteesi, puhelinnumerosi ja osoitteesi.
 
-In the output, you'll find options to open the app in a
+Tilaushistoria: (Tulossa) Tarkastele aiempia tilauksiasi ja niiden tilaa.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Teknologiat
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Frontend: React Native, Expo, Expo Router
 
-## Get a fresh project
+Backend: Supabase (PostgreSQL, Auth)
 
-When you're ready, run:
+Tilanhallinta: Redux Toolkit, React Redux
 
-```bash
-npm run reset-project
-```
+Tyylittely: StyleSheet (React Native), React Native Vector Icons (Feather, FontAwesome5)
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Asennus ja käynnistys
 
-## Learn more
+Kloonaa repositorio:
 
-To learn more about developing your project with Expo, look at the following resources:
+git clone <REPO_URL>
+cd pesuni
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Asenna riippuvuudet:
 
-## Join the community
+npm install
 
-Join our community of developers creating universal apps.
+Määritä ympäristömuuttujat:
+Luo .env-tiedosto projektin juureen ja lisää sinne Supabase-projektisi tiedot:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+EXPO_PUBLIC_SUPABASE_URL=your-supabase-url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+Käynnistä sovellus:
+
+npx expo start
+
+Voit avata sovelluksen Expo Go -sovelluksella puhelimessasi skannaamalla QR-koodin, tai käyttää emulaattoria (Android Studio / Xcode).
+
+Projektin rakenne
+
+app/: Expo Routerin reitit (sivut ja navigaatio).
+
+(tabs)/: Päänäkymät (Koti, Tilaukset, Profiili).
+
+auth/: Kirjautumis- ja rekisteröitymissivut.
+
+profile/: Profiiliin liittyvät alisivut (esim. henkilötiedot).
+
+components/: Uudelleenkäytettävät UI-komponentit.
+
+redux/: Redux store ja slicet (esim. cartSlice).
+
+lib/: Apukirjastot ja konfiguraatiot (esim. supabase.ts).
+
+assets/: Kuvat, fontit ja muut staattiset tiedostot.
