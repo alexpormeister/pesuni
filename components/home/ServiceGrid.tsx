@@ -38,35 +38,39 @@ const FILTER_OPTIONS = [
 ];
 
 // --- Product Card Component ---
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => (
-    <View style={styles.productCard}>
-        <Image
-            source={{ uri: product.image_url }}
-            style={styles.productImage}
-            resizeMode="cover"
-        />
-        <View style={styles.productInfo}>
-            <Text style={styles.productName}>{product.name}</Text>
-            <Text style={styles.productDescription} numberOfLines={2}>
-                {product.description}
-            </Text>
-            <Text style={styles.productPrice}>{product.base_price} €</Text>
-            {/* <TouchableOpacity style={styles.addButton}>
-          <Text style={styles.addButtonText}>Lisää ostoskoriin</Text>
-        </TouchableOpacity>
-      */}
+const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+    const handleAddToCart = () => {
+        console.log(`Lisätty ostoskoriin: ${product.name}`);
+    };
+
+    return (
+        <View style={styles.productCard}>
+            <Image
+                source={{ uri: product.image_url }}
+                style={styles.productImage}
+                resizeMode="cover"
+            />
+            <View style={styles.productInfo}>
+                <Text style={styles.productName}>{product.name}</Text>
+                <Text style={styles.productDescription} numberOfLines={2}>
+                    {product.description}
+                </Text>
+                <Text style={styles.productPrice}>{product.base_price} €</Text>
+
+                <TouchableOpacity style={styles.addButton} onPress={handleAddToCart}>
+                    <Text style={styles.addButtonText}>Lisää ostoskoriin</Text>
+                </TouchableOpacity>
+            </View>
         </View>
-    </View>
-);
+    );
+};
 
-// --- MAIN SERVICE GRID COMPONENT ---
 
-// 1. Define the props our component accepts
+
 type ServiceGridProps = {
     ListHeaderComponent?: React.ReactNode;
 };
 
-// 2. Accept the props
 const ServiceGrid: React.FC<ServiceGridProps> = ({ ListHeaderComponent }) => {
     const [loading, setLoading] = useState<boolean>(true);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -152,7 +156,7 @@ const ServiceGrid: React.FC<ServiceGridProps> = ({ ListHeaderComponent }) => {
         </View>
     );
 
-    // --- Main Render ---
+    // Main Render 
 
     if (loading) {
         return (
@@ -177,7 +181,6 @@ const ServiceGrid: React.FC<ServiceGridProps> = ({ ListHeaderComponent }) => {
             data={displayedCategories}
             renderItem={renderCategory}
             keyExtractor={(category) => category.id}
-            // 3. Render the passed-in header AND the filter bar
             ListHeaderComponent={
                 <>
                     {ListHeaderComponent}
@@ -197,18 +200,15 @@ const ServiceGrid: React.FC<ServiceGridProps> = ({ ListHeaderComponent }) => {
                     <Text>No services found for this filter.</Text>
                 </View>
             }
-            // Add padding to the bottom so the last item isn't hidden
-            // by the tab bar
+
             ListFooterComponent={<View style={{ height: 100 }} />}
         />
     );
 };
 
-// --- STYLES ---
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa', // Light gray background
     },
     centered: {
         flex: 1,
@@ -226,10 +226,9 @@ const styles = StyleSheet.create({
         padding: 20,
         textAlign: 'center',
     },
-    // Filter Styles
     filterContainer: {
         paddingVertical: 10,
-        backgroundColor: '#ffffff', // White background for filters
+        backgroundColor: '#ffffff',
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
     },
@@ -255,24 +254,23 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontWeight: '700',
     },
-    // Category Styles
     categorySection: {
         marginTop: 16,
-        backgroundColor: '#ffffff', // White background for product cards
+        backgroundColor: '#ffffff',
     },
     categoryTitle: {
         fontSize: 22,
         fontWeight: 'bold',
         color: '#212529',
         paddingHorizontal: 16,
-        marginBottom: 8,
+        marginBottom: 16,
         paddingTop: 16,
+        textAlign: 'center',
     },
     productList: {
         paddingLeft: 16,
         paddingRight: 8,
     },
-    // Product Card Styles
     productCard: {
         width: 280,
         backgroundColor: '#ffffff',
@@ -311,6 +309,19 @@ const styles = StyleSheet.create({
         color: '#000',
         marginTop: 8,
     },
+    addButton: {
+        backgroundColor: '#00cce0',
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginTop: 10,
+        alignItems: 'center',
+    },
+    addButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+
 });
 
 export default ServiceGrid;
