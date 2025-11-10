@@ -1,53 +1,25 @@
-import { useRouter } from 'expo-router'; // 1. Tuotu useRouter navigointia varten
-import React from 'react'; // Siirretty ylimmäksi
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { SafeAreaView, StyleSheet, Text } from 'react-native';
 
-// Tuodaan tarvittavat komponentit
-// POISTETTU BottomNavBar-tuonti, koska layout-tiedosto hoitaa sen
+// Import your components
 import HomeHeader from "../../components/home/HomeHeader";
 import LocationBar from "../../components/home/LocationBar";
+// This is the new Supabase-fetching component
 import ServiceGrid from "../../components/home/ServiceGrid";
 
-// Data palveluille, varmista että polut ovat oikein ja käytä require()-funktiota
-const SERVICES_DATA = [
-    {
-        id: 1,
-        name: 'Pyykkipesu',
-        imagePath: require('../../assets/images/pyykki.png'), // KORJATTU
-        backgroundColor: '#f0f8ff',
-    },
-    {
-        id: 2,
-        name: 'Lakanapyykki',
-        imagePath: require('../../assets/images/lakana.png'), // KORJATTU
-        backgroundColor: '#f0f8ff',
-    },
-    {
-        id: 3,
-        name: 'Kenkäpesu',
-        imagePath: require('../../assets/images/kenka.png'), // KORJATTU
-        backgroundColor: '#f0f8ff',
-    },
-    {
-        id: 4,
-        name: 'Mattopesu',
-        imagePath: require('../../assets/images/matto.png'), // KORJATTU
-        backgroundColor: '#f0f8ff',
-    },
-];
+// We no longer need SERVICES_DATA, as ServiceGrid fetches its own data.
 
 export default function HomeScreen() {
-    // 2. Alustetaan router
     const router = useRouter();
 
     const handleStartWash = () => {
         console.log("Aloita Pesu painettu! Navigoi pesutilauksen luontiin.");
     };
 
-    // 3. Uusi funktio, joka navigoi profiilisivulle
     const handleGoToProfile = () => {
         console.log("Navigoidaan profiiliin...");
-        router.push('/profile'); // Olettaen, että profiilisivusi on '/profile'
+        router.push('/profile');
     };
 
     const handleCartPress = () => {
@@ -55,39 +27,41 @@ export default function HomeScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            <ScrollView>
-                {/* 1. Ylätunniste (Sininen alue) */}
-                <HomeHeader onStartPress={handleStartWash} />
+        // Use SafeAreaView or a plain View with flex: 1
+        // NO ScrollView here!
+        <SafeAreaView style={styles.container}>
+            <ServiceGrid
+                ListHeaderComponent={
+                    // Pass all your header content here
+                    // It will be rendered at the top of the scrollable list
+                    <>
+                        {/* 1. Ylätunniste (Sininen alue) */}
+                        <HomeHeader onStartPress={handleStartWash} />
 
-                {/* 2. Osoite- ja ostoskoripalkki */}
-                <LocationBar
-                    // 4. Annettu uusi propi vanhan 'onLocationPress'-propin sijaan
-                    onAddNewAddress={handleGoToProfile}
-                    onCartPress={handleCartPress}
-                />
+                        {/* 2. Osoite- ja ostoskoripalkki */}
+                        <LocationBar
+                            onAddNewAddress={handleGoToProfile}
+                            onCartPress={handleCartPress}
+                        />
 
-                {/* 3. Muu sisältö (valkoinen alue) alkaa tästä */}
-                <Text style={styles.mainTitle}>Valitse Pesusi</Text>
+                        {/* 3. Muu sisältö (valkoinen alue) alkaa tästä */}
+                        <Text style={styles.mainTitle}>Valitse Pesusi</Text>
 
-                {/* 4. Palveluruudukko */}
-                <ServiceGrid services={SERVICES_DATA} />
-
-                {/* Lisätty tyhjää tilaa scrollin alaosaan, 
-                    jotta sisältö ei jää BottomNavBarrin alle piiloon */}
-                <View style={{ height: 100 }} />
-
-            </ScrollView>
-
-
-        </View>
+                        {/* NOTE: The <ServiceGrid> component will now render
+                          its filter bar right below this title, and then
+                          the products fetched from Supabase.
+                        */}
+                    </>
+                }
+            />
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'white',
+        backgroundColor: 'white', // This white will be the default background
     },
     mainTitle: {
         fontSize: 24,
@@ -97,5 +71,6 @@ const styles = StyleSheet.create({
         marginTop: 35,
         marginBottom: 25,
         textAlign: "center",
+        backgroundColor: 'white',
     },
 });
