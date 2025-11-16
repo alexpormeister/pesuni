@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { selectTotalCartItems } from '../../redux/cartSlice';
 const COLORS = {
     dark: '#333333',
-    primary: '#005D97',
+    primary: '#5abaff',
     secondary: '#5abaff',
     white: 'white',
     lightGray: '#f0f0f0',

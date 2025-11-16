@@ -39,33 +39,40 @@ const FILTER_OPTIONS = [
 
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     const dispatch = useDispatch();
+    const [isAdded, setIsAdded] = useState(false); // Tila napin tilalle
 
     const handleAddToCart = () => {
         dispatch(addToCart({
             id: product.product_id,
             name: product.name,
             price: product.base_price,
-            // image: product.image_url //Ehkä lisätään kuva myöhemmin
         }));
-        console.log(`Lisätty ostoskoriin: ${product.name}`);
+
+        // Muutetaan napin tila
+        setIsAdded(true);
+
+        // Palautetaan nappi normaaliksi 2 sekunnin kuluttua
+        setTimeout(() => {
+            setIsAdded(false);
+        }, 2000);
     };
 
     return (
         <View style={styles.productCard}>
-            <Image
-                source={{ uri: product.image_url }}
-                style={styles.productImage}
-                resizeMode="cover"
-            />
+            <Image source={{ uri: product.image_url }} style={styles.productImage} resizeMode="cover" />
             <View style={styles.productInfo}>
                 <Text style={styles.productName}>{product.name}</Text>
-                <Text style={styles.productDescription} numberOfLines={2}>
-                    {product.description}
-                </Text>
+                <Text style={styles.productDescription} numberOfLines={2}>{product.description}</Text>
                 <Text style={styles.productPrice}>{product.base_price} €</Text>
 
-                <TouchableOpacity style={styles.addButton} onPress={handleAddToCart}>
-                    <Text style={styles.addButtonText}>Lisää ostoskoriin</Text>
+                <TouchableOpacity
+                    style={[styles.addButton, isAdded && { backgroundColor: '#4CAF50' }]} // Vihreä väri kun lisätty
+                    onPress={handleAddToCart}
+                    disabled={isAdded} // Estetään tuplaklikkaus animaation aikana
+                >
+                    <Text style={styles.addButtonText}>
+                        {isAdded ? "Lisätty koriin! ✓" : "Lisää ostoskoriin"}
+                    </Text>
                 </TouchableOpacity>
             </View>
         </View>
