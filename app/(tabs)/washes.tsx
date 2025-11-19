@@ -7,7 +7,7 @@ import { useSelector } from 'react-redux';
 import { selectCartItems } from '../../redux/cartSlice';
 
 import CartList from "../../components/washes/CartList";
-import EmptyCart from "../../components/washes/EmptyCart";
+import EmptyCart from "../../components/washes/EmptyWashes";
 
 const COLORS = {
     white: '#ffffff',

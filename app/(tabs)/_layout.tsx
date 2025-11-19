@@ -15,6 +15,9 @@ export default function TabLayout() {
     } else if (tabId === 'profile') {
       router.push({ pathname: '/profile' });
     }
+    else if (tabId === 'orders') {
+      router.push({ pathname: '/orders' });
+    }
   };
 
   const getActiveTab = () => {
@@ -24,6 +27,9 @@ export default function TabLayout() {
     }
     if (pathname === '/profile') {
       return 'profile';
+    }
+    if (pathname === '/orders') {
+      return 'orders';
     }
     return 'home';
   };
@@ -40,6 +46,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ headerShown: false }} />
       <Tabs.Screen name="washes" options={{ headerShown: false }} />
       <Tabs.Screen name="profile" options={{ headerShown: false }} />
+      <Tabs.Screen name="orders" options={{ headerShown: false }} />
     </Tabs>
   );
 }

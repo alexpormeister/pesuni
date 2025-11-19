@@ -42,7 +42,7 @@ const ProfileScreen = () => {
             id: '3',
             label: 'Ostohistoria',
             icon: 'shopping-cart',
-            onPress: () => Alert.alert('Ostohistoria painettu'),
+            onPress: () => router.push("/orders"),
         },
         {
             id: '4',

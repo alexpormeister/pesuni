@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -5,15 +6,27 @@ const { width } = Dimensions.get('window');
 
 interface EmptyCartProps {
     onSelectWash: () => void;
-    onOrderHistory: () => void;
+    // onOrderHistory poistettu propsista, koska hoidamme sen nyt tässä komponentissa
 }
 
-const EmptyCart: React.FC<EmptyCartProps> = ({ onSelectWash, onOrderHistory }) => {
+const EmptyCart: React.FC<EmptyCartProps> = ({ onSelectWash }) => {
+    const router = useRouter();
+
+    const handleOrderHistory = () => {
+        router.push({
+            // Varmista, että pathname vastaa tiedostoasi (esim. '/orders' tai '/tabs/orders')
+            // Jos tiedostosi nimi on myOrders.tsx, polku on '/myOrders'
+            pathname: '/orders',
+            params: { initialTab: 'History' }
+        });
+    };
+
     return (
         <View style={styles.container}>
             <Image
-                source={require("../../assets/images/empty-basket-removebg-preview.png")} // Korjattu lataamaan paikallinen kuva. Varmista, että polku on oikea.
+                source={require("../../assets/images/empty-basket-removebg-preview.png")}
                 style={styles.image}
+                resizeMode="contain" // Lisätty varmuuden vuoksi, jotta kuva skaalautuu nätisti
             />
 
             <Text style={styles.title}>Korisi on tyhjä</Text>
@@ -25,7 +38,7 @@ const EmptyCart: React.FC<EmptyCartProps> = ({ onSelectWash, onOrderHistory }) =
                 <Text style={styles.primaryButtonText}>Valitse Pesu</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={onOrderHistory}>
+            <TouchableOpacity onPress={handleOrderHistory}>
                 <Text style={styles.secondaryButtonText}>Tilaushistoria</Text>
             </TouchableOpacity>
         </View>
@@ -86,4 +99,3 @@ const styles = StyleSheet.create({
 });
 
 export default EmptyCart;
-
