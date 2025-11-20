@@ -14,17 +14,17 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import CountryPicker, { CountryCode } from 'react-native-country-picker-modal';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useDispatch, useSelector } from 'react-redux';
 import { supabase } from '../../lib/supabase';
 
-interface UserProfile {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
-    phone: string | null;
-    address: string | null;
-}
+// 🔥 REDUX IMPORTIT KORJATTU 🔥
+// Tuodaan tarvittavat Redux-toiminnot ja UserProfile-tyyppi
+import { selectUserProfile, updateProfileFields, UserProfile } from '../../redux/profileSlice';
+// Tuodaan uusi asynkroninen Thunk profiilin lataamiseen
+import { fetchUserProfile } from '../../redux/profileThunks';
+// --------------------
 
 const COLORS = {
     primary: '#00c2ff',
@@ -35,11 +35,40 @@ const COLORS = {
     border: '#e0e0e0'
 };
 
+// --- MAKOODI VAKIOT & APUFUNKTIOT ---
+const CALLING_CODES: { [key: string]: string } = {
+    'FI': '358',
+    'US': '1',
+    'SE': '46',
+    'NO': '47',
+    'DE': '49',
+};
+
+const getInitialCountryCode = (phone: string | null | undefined): CountryCode => {
+    if (!phone) return 'FI';
+
+    for (const [code, prefix] of Object.entries(CALLING_CODES)) {
+        if (phone.startsWith(`+${prefix}`)) {
+            return code as CountryCode;
+        }
+    }
+    return 'FI';
+};
+
 export default function PersonalInfoScreen() {
     const router = useRouter();
+    const dispatch = useDispatch();
+
+    // 🔥 UUSI: LUE PROFIILIDATA AINA REDUXISTA 🔥
+    const reduxProfile = useSelector(selectUserProfile);
+
+    // Käytetään Redux-tilaa (`reduxProfile`) tietojen näyttämiseen.
+    // Alustetaan `profile` tyhjänä objektina, jos Redux on vielä tyhjä (initialState).
+    const profile = reduxProfile || {};
+
+    // Käytetään `loading` tilaa vain kun sivu latautuu ensimmäisen kerran.
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [profile, setProfile] = useState<UserProfile | null>(null);
 
     const [modalVisible, setModalVisible] = useState(false);
     const [editingField, setEditingField] = useState<'name' | 'email' | 'phone' | 'address' | null>(null);
@@ -48,54 +77,23 @@ export default function PersonalInfoScreen() {
     const [tempLastName, setTempLastName] = useState('');
     const [tempValue, setTempValue] = useState('');
 
+    const [countryCode, setCountryCode] = useState<CountryCode>('FI');
+    const [countryPickerVisible, setCountryPickerVisible] = useState(false);
+
+    // --- 1. PROFIILIN LATAUS (THUNK) ---
     useEffect(() => {
-        fetchProfile();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        // Dispatchataan Thunk, joka hakee tiedot Supabasesta ja asettaa ne Reduxiin.
+        // Koska Thunk hakee tiedot ja päivittää ne globaalisti, Checkout-sivu saa ne.
+        dispatch(fetchUserProfile() as any) // 'as any' poistaa tyyppivirheen
+            .finally(() => {
+                setLoading(false); // Aseta lataus pois, kun haku on valmis
+            });
+    }, [dispatch]);
 
-    const fetchProfile = async () => {
-        try {
-            setLoading(true);
-            const { data: { user } } = await supabase.auth.getUser();
 
-            if (!user) {
-                Alert.alert('Virhe', 'Kirjaudu sisään nähdäksesi tietosi.');
-                router.replace('/auth/login');
-                return;
-            }
-
-            let { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', user.id)
-                .single();
-
-            if (error && error.code !== 'PGRST116') {
-                throw error;
-            }
-
-            if (!data) {
-                data = {
-                    id: user.id,
-                    user_id: user.id,
-                    email: user.email,
-                    first_name: '',
-                    last_name: '',
-                    phone: '',
-                    address: ''
-                };
-            }
-
-            setProfile(data);
-
-        } catch (error: any) {
-            Alert.alert('Virhe', error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // --- 2. HAKUJEN TALLENNUS JA REDUXIN PÄIVITYS ---
     const handleSaveField = async () => {
+        // Käytetään Redux-profiilia, jos se on olemassa
         if (!profile || !editingField) return;
         setSaving(true);
 
@@ -110,6 +108,17 @@ export default function PersonalInfoScreen() {
                     first_name: tempFirstName,
                     last_name: tempLastName,
                 };
+            } else if (editingField === 'phone') {
+
+                const callingCode = CALLING_CODES[countryCode];
+                if (!callingCode) throw new Error('Maakoodia ei valittu tai löydy.');
+                if (!tempValue.trim()) throw new Error('Puhelinnumero ei voi olla tyhjä.');
+
+                const numberPart = tempValue.replace(/[^0-9]/g, '');
+                const fullPhoneNumber = `+${callingCode}${numberPart}`;
+
+                updates = { phone: fullPhoneNumber };
+
             } else {
                 updates = { [editingField]: tempValue };
             }
@@ -124,7 +133,9 @@ export default function PersonalInfoScreen() {
 
             if (error) throw error;
 
-            setProfile({ ...profile, ...updates });
+            // Päivitä Redux-tila
+            dispatch(updateProfileFields(updates));
+
             setModalVisible(false);
             Alert.alert('Onnistui', 'Tiedot päivitetty.');
 
@@ -135,15 +146,36 @@ export default function PersonalInfoScreen() {
         }
     };
 
+    // --- 3. MUOKKAUSMODAALIN AVAUS (Käyttää Redux-dataa) ---
+    // Nyt "profile" tulee Reduxista, joten se on aina tuorein tieto.
     const openEditModal = (field: 'name' | 'email' | 'phone' | 'address') => {
         setEditingField(field);
+
         if (field === 'name') {
-            setTempFirstName(profile?.first_name || '');
-            setTempLastName(profile?.last_name || '');
+            setTempFirstName(profile.first_name || '');
+            setTempLastName(profile.last_name || '');
+        } else if (field === 'phone') {
+
+            const fullPhone = profile.phone || '';
+            const initialCountry = getInitialCountryCode(fullPhone);
+            setCountryCode(initialCountry);
+
+            const callingCodeStr = `+${CALLING_CODES[initialCountry] || ''}`;
+
+            const numberPart = fullPhone.startsWith(callingCodeStr)
+                ? fullPhone.substring(callingCodeStr.length)
+                : fullPhone;
+
+            setTempValue(numberPart);
+
         } else {
-            setTempValue(profile ? (profile[field] as string) || '' : '');
+            setTempValue(profile[field] || '');
         }
         setModalVisible(true);
+    };
+
+    const handleGoBack = () => {
+        router.push('/profile');
     };
 
     const InfoItem = ({ label, value, field }: { label: string, value: string | null | undefined, field: 'name' | 'email' | 'phone' | 'address' }) => (
@@ -158,6 +190,10 @@ export default function PersonalInfoScreen() {
         </TouchableOpacity>
     );
 
+    // Täysi nimi (käyttää Reduxista saatua dataa)
+    const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+
+
     if (loading) {
         return (
             <View style={styles.centered}>
@@ -169,7 +205,7 @@ export default function PersonalInfoScreen() {
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <TouchableOpacity onPress={handleGoBack}>
                     <Feather name="chevron-left" size={28} color={COLORS.dark} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Henkilötiedot</Text>
@@ -178,26 +214,10 @@ export default function PersonalInfoScreen() {
 
             <ScrollView style={styles.content}>
                 <View style={styles.infoList}>
-                    <InfoItem
-                        label="Nimi"
-                        value={`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()}
-                        field="name"
-                    />
-                    <InfoItem
-                        label="Sähköposti"
-                        value={profile?.email}
-                        field="email"
-                    />
-                    <InfoItem
-                        label="Osoite"
-                        value={profile?.address}
-                        field="address"
-                    />
-                    <InfoItem
-                        label="Puhelinnumero"
-                        value={profile?.phone}
-                        field="phone"
-                    />
+                    <InfoItem label="Nimi" value={fullName} field="name" />
+                    <InfoItem label="Sähköposti" value={profile.email} field="email" />
+                    <InfoItem label="Osoite" value={profile.address} field="address" />
+                    <InfoItem label="Puhelinnumero" value={profile.phone} field="phone" />
                 </View>
             </ScrollView>
 
@@ -225,37 +245,62 @@ export default function PersonalInfoScreen() {
 
                         <View style={styles.modalBody}>
                             {editingField === 'name' ? (
-                                <>
+                                <View>
                                     <Text style={styles.inputLabel}>Etunimi</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        value={tempFirstName}
-                                        onChangeText={setTempFirstName}
-                                        placeholder="Etunimi"
-                                    />
+                                    <TextInput style={styles.input} value={tempFirstName} onChangeText={setTempFirstName} placeholder="Etunimi" />
                                     <Text style={styles.inputLabel}>Sukunimi</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        value={tempLastName}
-                                        onChangeText={setTempLastName}
-                                        placeholder="Sukunimi"
-                                    />
+                                    <TextInput style={styles.input} value={tempLastName} onChangeText={setTempLastName} placeholder="Sukunimi" />
+                                </View>
+                            ) : editingField === 'phone' ? (
+                                <>
+                                    <Text style={styles.inputLabel}>Puhelinnumero</Text>
+                                    <View style={styles.phoneInputContainer}>
+                                        <TouchableOpacity
+                                            onPress={() => setCountryPickerVisible(true)}
+                                            style={styles.countryCodeButton}
+                                        >
+                                            <CountryPicker
+                                                withFlag
+                                                withCallingCode={false}
+                                                onSelect={({ cca2 }) => setCountryCode(cca2)}
+                                                visible={countryPickerVisible}
+                                                onClose={() => setCountryPickerVisible(false)}
+                                                containerButtonStyle={{ paddingRight: 5 }}
+                                                preferredCountries={Object.keys(CALLING_CODES) as CountryCode[]}
+                                                countryCode={countryCode}
+                                            />
+                                            <Text style={styles.countryCodeText}>
+                                                +{CALLING_CODES[countryCode] || '—'}
+                                            </Text>
+                                            <Feather name="chevron-down" size={14} color={COLORS.dark} style={{ marginLeft: 5 }} />
+                                        </TouchableOpacity>
+
+                                        <TextInput
+                                            style={[styles.input, styles.numberInput]}
+                                            value={tempValue}
+                                            onChangeText={setTempValue}
+                                            placeholder="40 123 4567"
+                                            keyboardType='phone-pad'
+                                            autoCapitalize='none'
+                                        />
+                                    </View>
                                 </>
                             ) : (
-                                <>
+                                <View>
                                     <Text style={styles.inputLabel}>
-                                        {editingField === 'email' ? 'Sähköposti' :
-                                            editingField === 'address' ? 'Osoite' : 'Puhelinnumero'}
+                                        {editingField === 'email' ? 'Sähköposti' : editingField === 'address' ? 'Osoite' : 'Puhelinnumero'}
                                     </Text>
                                     <TextInput
                                         style={styles.input}
                                         value={tempValue}
                                         onChangeText={setTempValue}
                                         placeholder="Syötä uusi arvo"
-                                        keyboardType={editingField === 'phone' ? 'phone-pad' : editingField === 'email' ? 'email-address' : 'default'}
+                                        keyboardType={editingField === 'email' ? 'email-address' : 'default'}
                                         autoCapitalize={editingField === 'email' ? 'none' : 'words'}
+                                        multiline={editingField === 'address'}
+                                        textAlignVertical={editingField === 'address' ? 'top' : 'center'}
                                     />
-                                </>
+                                </View>
                             )}
                         </View>
 
@@ -276,7 +321,7 @@ export default function PersonalInfoScreen() {
         </SafeAreaView>
     );
 }
-
+// --- TYYLIT ---
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -294,11 +339,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 15,
         backgroundColor: COLORS.white,
-    },
-    backButton: {
-        padding: 5,
-        backgroundColor: '#E0E0E0',
-        borderRadius: 20,
     },
     headerTitle: {
         fontSize: 18,
@@ -385,6 +425,42 @@ const styles = StyleSheet.create({
         color: COLORS.dark,
         borderWidth: 1,
         borderColor: COLORS.border,
+        minHeight: 50,
+    },
+    phoneInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.gray,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        overflow: 'hidden',
+    },
+    countryCodeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 12,
+        backgroundColor: COLORS.white,
+        borderRightWidth: 1,
+        borderColor: COLORS.border,
+    },
+    countryCodeText: {
+        fontSize: 16,
+        color: COLORS.dark,
+        fontWeight: 'bold',
+        marginLeft: 5,
+    },
+    countryCodeIcon: {
+        marginLeft: 5,
+    },
+    numberInput: {
+        flex: 1,
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        fontSize: 16,
     },
     saveButton: {
         backgroundColor: COLORS.primary,

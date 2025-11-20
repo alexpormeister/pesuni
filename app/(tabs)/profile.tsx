@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, SafeAreaView, StyleSheet, View } from 'react-native';
-import LocationDisplay from "../../components/profile/LocationDisplay";
+import { Alert, SafeAreaView, ScrollView, StyleSheet, View } from 'react-native'; // <-- LISÄTTY ScrollView
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import SettingsList from "../../components/profile/SettingsList";
 import StatsBar from "../../components/profile/StatsBar";
@@ -11,77 +10,53 @@ const ProfileScreen = () => {
     const router = useRouter();
 
     const handleEditPress = () => {
-        router.push('/profile/personal-data');
+        router.push('/general/personal-data');
     };
 
+    // HUOM: Tämä on vanha uloskirjautumislogiikka, jota käytetään Alertissa.
+    // Oletan, että uusi uloskirjautumislogiikka on ProfileHeader-komponentissa, mutta pidetään tämä täällä varalta.
     const handleLogoutPress = async () => {
         const { error } = await supabase.auth.signOut();
         if (error) {
             Alert.alert("Virhe", error.message);
         }
     };
-
-    const handleLocationPress = () => {
-        Alert.alert("Osoite painettu", "Tässä voisi avata osoitteen valinnan.");
+    const handleOrderHistory = () => {
+        router.push({
+            pathname: '/orders',
+            params: { initialTab: 'History' }
+        });
     };
 
     const generalSettings = [
-        {
-            id: '1',
-            label: 'Henkilötiedot',
-            icon: 'user-alt',
-            onPress: () => router.push('/profile/personal-data'),
-        },
-        {
-            id: '2',
-            label: 'Yleiset',
-            icon: 'cog',
-            onPress: () => Alert.alert('Yleiset painettu'),
-        },
-        {
-            id: '3',
-            label: 'Ostohistoria',
-            icon: 'shopping-cart',
-            onPress: () => router.push("/orders"),
-        },
-        {
-            id: '4',
-            label: 'Ilmoitukset',
-            icon: 'bell',
-            onPress: () => Alert.alert('Ilmoitukset painettu'),
-        },
-        {
-            id: '5',
-            label: 'Tietosuoja',
-            icon: 'shield-alt',
-            onPress: () => Alert.alert('Tietosuoja painettu'),
-        },
-        {
-            id: '6',
-            label: 'Ota Yhteyttä',
-            icon: 'comment',
-            onPress: () => Alert.alert('Ota Yhteyttä painettu'),
-        },
+        { id: '1', label: 'Henkilötiedot', icon: 'user-alt', onPress: () => router.push('/general/personal-data') },
+        { id: '2', label: 'Yleiset', icon: 'cog', onPress: () => router.push('/general/general') },
+        { id: '3', label: 'Ostohistoria', icon: 'shopping-cart', onPress: handleOrderHistory },
+        { id: '4', label: 'Ilmoitukset', icon: 'bell', onPress: () => router.push('/general/notifications') },
+        { id: '5', label: 'Tietosuoja', icon: 'shield-alt', onPress: () => router.push('/general/privacy-policy') },
+        { id: '6', label: 'Ota Yhteyttä', icon: 'comment', onPress: () => router.push('/general/chat') },
     ];
 
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <View style={styles.container}>
+            {/* Kääri koko sisältö ScrollView'hun */}
+            <ScrollView style={styles.scrollView}>
                 <ProfileHeader
                     onEditPress={handleEditPress}
+                    // HUOM: Käytä uloskirjautumista varten joko yllä määriteltyä handleLogoutPressiä tai ProfileHeaderin sisäistä logiikkaa.
                     onLogoutPress={() => { handleLogoutPress(); }}
                 />
 
-                <View style={styles.locationWrapper}>
-                    <LocationDisplay onLocationPress={handleLocationPress} />
-                </View>
+                <View style={styles.contentContainer}>
 
-                <View style={styles.stats}>
-                    <StatsBar points={24} orders={3} />
+                    <View style={styles.stats}>
+                        <StatsBar points={24} orders={3} />
+                    </View>
+
+                    <SettingsList title={'Yleiset'} items={generalSettings} />
                 </View>
-                <SettingsList title={'Yleiset'} items={generalSettings}></SettingsList>
-            </View>
+            </ScrollView>
         </SafeAreaView >
     );
 };
@@ -91,16 +66,23 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F7F7F7',
     },
-    container: {
+    // Uusi tyyli ScrollView'lle, joka saa kaiken tilan
+    scrollView: {
         flex: 1,
+    },
+    // Tämä View korvaa vanhan "container"-View'n ja toimii sisällön sijoittelijana ScrollView'n sisällä.
+    contentContainer: {
+        // Tämän View'n sisällä on kaikki sisältö, jonka pitää scrollata.
+        // TÄRKEÄÄ: ÄLÄ käytä tässä flex: 1, jotta sisältö ei veny, vaan mukautuu.
     },
     locationWrapper: {
         width: '100%',
         alignItems: 'center',
-        marginTop: -25,
+        marginTop: -25, // Säilytetään alkuperäinen asettelu
     },
     stats: {
         alignItems: "center",
+        marginBottom: 20, // Lisätty marginaali listan ja StatsBarin väliin
     }
 });
 

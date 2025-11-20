@@ -1,5 +1,4 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
 import React from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
@@ -7,7 +6,7 @@ import { useSelector } from 'react-redux';
 import { selectCartItems } from '../../redux/cartSlice';
 
 import CartList from "../../components/washes/CartList";
-import EmptyCart from "../../components/washes/EmptyWashes";
+import EmptyCart from "../../components/washes/EmptyWashes"; // Oletetaan, että tämä on EmptyWashes.tsx
 
 const COLORS = {
     white: '#ffffff',
@@ -16,16 +15,7 @@ const COLORS = {
 };
 
 export default function WashesScreen() {
-    const router = useRouter();
     const cartItems = useSelector(selectCartItems);
-
-    const handleSelectWash = () => {
-        router.push('/(tabs)');
-    };
-
-    const handleOrderHistory = () => {
-        console.log("Navigoidaan tilaushistoriaan...");
-    };
 
     if (cartItems.length === 0) {
         return (
@@ -34,10 +24,7 @@ export default function WashesScreen() {
                 style={styles.emptyContainer}
                 locations={[0, 0.44]}
             >
-                <EmptyCart
-                    onSelectWash={handleSelectWash}
-                    onOrderHistory={handleOrderHistory}
-                />
+                <EmptyCart />
             </LinearGradient>
         );
     }

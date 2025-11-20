@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+
 import {
     ActivityIndicator,
     FlatList,
@@ -39,7 +40,7 @@ const FILTER_OPTIONS = [
 
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     const dispatch = useDispatch();
-    const [isAdded, setIsAdded] = useState(false); // Tila napin tilalle
+    const [isAdded, setIsAdded] = useState(false);
 
     const handleAddToCart = () => {
         dispatch(addToCart({
@@ -48,10 +49,8 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
             price: product.base_price,
         }));
 
-        // Muutetaan napin tila
         setIsAdded(true);
 
-        // Palautetaan nappi normaaliksi 2 sekunnin kuluttua
         setTimeout(() => {
             setIsAdded(false);
         }, 2000);
@@ -66,9 +65,9 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                 <Text style={styles.productPrice}>{product.base_price} €</Text>
 
                 <TouchableOpacity
-                    style={[styles.addButton, isAdded && { backgroundColor: '#4CAF50' }]} // Vihreä väri kun lisätty
+                    style={[styles.addButton, isAdded && { backgroundColor: '#4CAF50' }]}
                     onPress={handleAddToCart}
-                    disabled={isAdded} // Estetään tuplaklikkaus animaation aikana
+                    disabled={isAdded}
                 >
                     <Text style={styles.addButtonText}>
                         {isAdded ? "Lisätty koriin! ✓" : "Lisää ostoskoriin"}
@@ -83,11 +82,20 @@ type ServiceGridProps = {
     ListHeaderComponent?: React.ReactNode;
 };
 
-const ServiceGrid: React.FC<ServiceGridProps> = ({ ListHeaderComponent }) => {
+const ServiceGrid = forwardRef<FlatList, ServiceGridProps>(({ ListHeaderComponent }, ref) => {
     const [loading, setLoading] = useState<boolean>(true);
     const [categories, setCategories] = useState<Category[]>([]);
     const [selectedFilter, setSelectedFilter] = useState<string>('Kaikki palvelut');
     const [error, setError] = useState<string | null>(null);
+
+    const internalRef = useRef<FlatList>(null);
+
+    useImperativeHandle(ref, () => ({
+        scrollToOffset: (params: { offset: number; animated?: boolean }) => {
+            internalRef.current?.scrollToOffset(params);
+        },
+    }) as any);
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -98,17 +106,17 @@ const ServiceGrid: React.FC<ServiceGridProps> = ({ ListHeaderComponent }) => {
                 .from('categories')
                 .select(
                     `
-          id,
-          name,
-          category_id,
-          products!inner (
-            product_id,
-            name,
-            description,
-            image_url,
-            base_price
-          )
-        `
+             id,
+             name,
+             category_id,
+             products!inner (
+               product_id,
+               name,
+               description,
+               image_url,
+               base_price
+             )
+           `
                 )
                 .eq('products.is_active', true)
                 .order('sort_order');
@@ -187,6 +195,7 @@ const ServiceGrid: React.FC<ServiceGridProps> = ({ ListHeaderComponent }) => {
 
     return (
         <FlatList
+            ref={internalRef}
             style={styles.container}
             data={displayedCategories}
             renderItem={renderCategory}
@@ -214,7 +223,12 @@ const ServiceGrid: React.FC<ServiceGridProps> = ({ ListHeaderComponent }) => {
             ListFooterComponent={<View style={{ height: 100 }} />}
         />
     );
-};
+});
+
+// FIX: Add the display name
+ServiceGrid.displayName = 'ServiceGrid';
+
+export default ServiceGrid;
 
 const styles = StyleSheet.create({
     container: {
@@ -331,7 +345,4 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontSize: 14,
     },
-
 });
-
-export default ServiceGrid;

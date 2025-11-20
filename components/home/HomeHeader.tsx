@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
 const COLORS = {
     primary: '#005D97',
@@ -13,16 +13,19 @@ const BasketImage = require("../../assets/images/pesuni-basket.png");
 
 interface HomeHeaderProps {
     onStartPress: () => void;
+    // LISÄTTY: Vastaanottaa dynaamisen tyylin (esim. paddingTop)
+    style?: ViewStyle;
 }
 
-const HomeHeader: React.FC<HomeHeaderProps> = ({ onStartPress }) => {
+const HomeHeader: React.FC<HomeHeaderProps> = ({ onStartPress, style }) => {
     return (
         <LinearGradient
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-            style={styles.header}>
-
+            // LISÄTTY: Yhdistetään styles.header ja ulkoinen style
+            style={[styles.header, style]}
+        >
             <View style={styles.headerContent}>
                 <Text style={styles.title}>Pyykkiä tulossa?</Text>
                 <Text style={styles.subtitle}>Valitse pestävät ja noutoaika, me hoidamme loput.</Text>
@@ -48,8 +51,10 @@ export default HomeHeader;
 
 const styles = StyleSheet.create({
     header: {
+        // HUOM: paddingTop on nyt 0, jotta se on täysin riippuvainen ulkoisesta style-propista.
+        // Poistettu vanha kova koodaus paddingTop: 60,
         padding: 25,
-        paddingTop: 60,
+        paddingTop: 0,
         paddingBottom: 135,
     },
     title: {
@@ -65,6 +70,7 @@ const styles = StyleSheet.create({
         maxWidth: '70%',
     },
     headerContent: {
+        // Sisältöä nostetaan ylös, jotta se mahtuu tyhjään tilaan
         top: 55,
     },
     startButton: {

@@ -4,29 +4,33 @@ import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'rea
 
 const { width } = Dimensions.get('window');
 
-interface EmptyCartProps {
-    onSelectWash: () => void;
-    // onOrderHistory poistettu propsista, koska hoidamme sen nyt tässä komponentissa
-}
-
-const EmptyCart: React.FC<EmptyCartProps> = ({ onSelectWash }) => {
+const EmptyCart: React.FC = () => {
     const router = useRouter();
 
+    // Funktio, joka hoitaa siirtymisen tilaushistoriaan
     const handleOrderHistory = () => {
         router.push({
-            // Varmista, että pathname vastaa tiedostoasi (esim. '/orders' tai '/tabs/orders')
-            // Jos tiedostosi nimi on myOrders.tsx, polku on '/myOrders'
             pathname: '/orders',
             params: { initialTab: 'History' }
         });
     };
+
+    // Funktio, joka hoitaa siirtymisen ja scrollauksen HomeScreeenille (index-sivulle)
+    const handleSelectWashScroll = () => {
+        // Lähetetään parametri 'scrollToMenu' HomeScreeenille (index-sivulle)
+        router.push({
+            pathname: '/', // Oletettu polku HomeScreeenille
+            params: { action: 'scrollToMenu' }
+        });
+    };
+
 
     return (
         <View style={styles.container}>
             <Image
                 source={require("../../assets/images/empty-basket-removebg-preview.png")}
                 style={styles.image}
-                resizeMode="contain" // Lisätty varmuuden vuoksi, jotta kuva skaalautuu nätisti
+                resizeMode="contain"
             />
 
             <Text style={styles.title}>Korisi on tyhjä</Text>
@@ -34,7 +38,8 @@ const EmptyCart: React.FC<EmptyCartProps> = ({ onSelectWash }) => {
                 Näyttäisi siltä, että et ole lisännyt vielä pesuja koriisi
             </Text>
 
-            <TouchableOpacity style={styles.primaryButton} onPress={onSelectWash}>
+            {/* KÄYTETÄÄN UUTTA SCROLLAAVAA FUNKTIOTA */}
+            <TouchableOpacity style={styles.primaryButton} onPress={handleSelectWashScroll}>
                 <Text style={styles.primaryButtonText}>Valitse Pesu</Text>
             </TouchableOpacity>
 

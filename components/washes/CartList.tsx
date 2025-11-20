@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; // 🔥 LISÄTTY 🔥
 import React from 'react';
 import {
-    Alert,
     FlatList,
     StyleSheet,
     Text,
@@ -27,26 +27,28 @@ const COLORS = {
     red: '#ff3b30',
 };
 
+// 🛑 onCheckoutPress on poistettu propeista, koska käytämme useRouteria sisäisesti
 interface CartListProps {
-    onCheckoutPress?: () => void;
     style?: ViewStyle;
     ListHeaderComponent?: React.ComponentType<any> | React.ReactElement | null;
     ListEmptyComponent?: React.ComponentType<any> | React.ReactElement | null;
 }
 
 const CartList: React.FC<CartListProps> = ({
-    onCheckoutPress,
     style,
     ListHeaderComponent,
     ListEmptyComponent
 }) => {
+    const router = useRouter(); // 🔥 KÄYTÄÄN REITTIOHJELMOIJAA SUORAAN
     const dispatch = useDispatch();
     const cartItems = useSelector(selectCartItems);
     const totalPrice = useSelector(selectCartTotalPrice);
 
-    const handleDefaultCheckout = () => {
-        Alert.alert("Kassa", "Tästä jatkettaisiin maksamaan! (Demo)");
+    // Käsittelijä suoraan kassalle siirtymiseen
+    const handleCheckoutAction = () => {
+        router.push("/checkout/checkout");
     };
+
 
     const renderItem = ({ item }: { item: CartItem }) => (
         <View style={styles.cartItem}>
@@ -100,7 +102,7 @@ const CartList: React.FC<CartListProps> = ({
                     </View>
                     <TouchableOpacity
                         style={styles.checkoutButton}
-                        onPress={onCheckoutPress || handleDefaultCheckout}
+                        onPress={handleCheckoutAction} // Navigoi suoraan kassalle
                     >
                         <Text style={styles.checkoutButtonText}>Siirry kassalle</Text>
                     </TouchableOpacity>
@@ -111,6 +113,7 @@ const CartList: React.FC<CartListProps> = ({
 };
 
 const styles = StyleSheet.create({
+    // ... (tyylit)
     container: {
         flex: 1,
         backgroundColor: COLORS.gray,

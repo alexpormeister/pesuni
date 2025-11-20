@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; // LISÄTTY: Reititystä varten
 import React from 'react';
 import {
-    Alert,
     FlatList,
     Modal,
     SafeAreaView,
@@ -34,12 +34,14 @@ interface CartModalProps {
 }
 
 const CartModal: React.FC<CartModalProps> = ({ isVisible, onClose }) => {
+    const router = useRouter(); // LISÄTTY: useRouter-hook
     const dispatch = useDispatch();
     const cartItems = useSelector(selectCartItems);
     const totalPrice = useSelector(selectCartTotalPrice);
 
     const handleCheckout = () => {
-        Alert.alert("Kassa", "Tästä jatkettaisiin maksamaan! (Demo)");
+        onClose(); // 1. SULJE MODAALI ENSIN
+        router.push("/checkout/checkout"); // 2. NAVIGOI KASSALLE
     };
 
     const renderItem = ({ item }: { item: CartItem }) => (
