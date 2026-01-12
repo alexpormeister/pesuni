@@ -71,7 +71,7 @@ export default function LoginScreen() {
                 >
                     <View style={styles.topContent}>
                         <Image
-                            source={require('../../assets/images/pesuni-basket.png')}
+                            source={require('../../assets/images/3dglossy-logo.png')}
                             style={styles.logo}
                             resizeMode="contain"
                         />

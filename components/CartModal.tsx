@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; // LISÄTTY: Reititystä varten
+import { useRouter } from 'expo-router';
 import React from 'react';
 import {
     FlatList,
     Modal,
+    Platform,
     SafeAreaView,
     StyleSheet,
     Text,
@@ -21,11 +22,13 @@ import {
 } from '../redux/cartSlice';
 
 const COLORS = {
-    primary: '#00c2ff',
+    primary: '#00AEEF', // Logon kirkas sininen
+    secondary: '#E6F7FF', // Erittäin vaalean sininen taustoille
     white: '#ffffff',
-    dark: '#333333',
-    gray: '#f0f0f0',
-    red: '#ff3b30',
+    dark: '#1A1A1A', // Pehmeämpi musta
+    lightGray: '#F2F2F7',
+    textGray: '#8E8E93',
+    red: '#FF3B30',
 };
 
 interface CartModalProps {
@@ -34,46 +37,52 @@ interface CartModalProps {
 }
 
 const CartModal: React.FC<CartModalProps> = ({ isVisible, onClose }) => {
-    const router = useRouter(); // LISÄTTY: useRouter-hook
+    const router = useRouter();
     const dispatch = useDispatch();
     const cartItems = useSelector(selectCartItems);
     const totalPrice = useSelector(selectCartTotalPrice);
 
     const handleCheckout = () => {
-        onClose(); // 1. SULJE MODAALI ENSIN
-        router.push("/checkout/checkout"); // 2. NAVIGOI KASSALLE
+        onClose();
+        router.push("/checkout/checkout");
     };
 
     const renderItem = ({ item }: { item: CartItem }) => (
         <View style={styles.cartItem}>
             <View style={styles.itemDetails}>
-                <Text style={styles.itemTitle}>{item.name}</Text>
+                <Text style={styles.itemTitle} numberOfLines={1}>{item.name}</Text>
                 <Text style={styles.itemPrice}>{(item.price * item.quantity).toFixed(2)} €</Text>
                 <Text style={styles.itemSinglePrice}>{item.price.toFixed(2)} € / kpl</Text>
             </View>
 
-            <View style={styles.quantityContainer}>
-                <TouchableOpacity
-                    style={styles.qtyButton}
-                    onPress={() => {
-                        if (item.quantity === 1) {
-                            dispatch(removeFromCart(item.id));
-                        } else {
-                            dispatch(decrementQuantity(item.id));
-                        }
-                    }}
-                >
-                    <Feather name={item.quantity === 1 ? "trash-2" : "minus"} size={20} color={item.quantity === 1 ? COLORS.red : COLORS.dark} />
-                </TouchableOpacity>
+            <View style={styles.quantityWrapper}>
+                <View style={styles.quantityContainer}>
+                    <TouchableOpacity
+                        style={styles.qtyButton}
+                        onPress={() => {
+                            if (item.quantity === 1) {
+                                dispatch(removeFromCart(item.id));
+                            } else {
+                                dispatch(decrementQuantity(item.id));
+                            }
+                        }}
+                    >
+                        <Feather
+                            name={item.quantity === 1 ? "trash-2" : "minus"}
+                            size={18}
+                            color={item.quantity === 1 ? COLORS.red : COLORS.dark}
+                        />
+                    </TouchableOpacity>
 
-                <Text style={styles.qtyText}>{item.quantity}</Text>
+                    <Text style={styles.qtyText}>{item.quantity}</Text>
 
-                <TouchableOpacity
-                    style={styles.qtyButton}
-                    onPress={() => dispatch(incrementQuantity(item.id))}
-                >
-                    <Feather name="plus" size={20} color={COLORS.dark} />
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.qtyButton}
+                        onPress={() => dispatch(incrementQuantity(item.id))}
+                    >
+                        <Feather name="plus" size={18} color={COLORS.dark} />
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
@@ -85,185 +94,254 @@ const CartModal: React.FC<CartModalProps> = ({ isVisible, onClose }) => {
             visible={isVisible}
             onRequestClose={onClose}
         >
-            <SafeAreaView style={styles.modalContainer}>
-                <View style={styles.modalContent}>
-                    <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Ostoskori</Text>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Feather name="x" size={24} color={COLORS.dark} />
-                        </TouchableOpacity>
-                    </View>
+            <View style={styles.overlay}>
+                <SafeAreaView style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        {/* Vetokahva modaalin yläreunassa (visual cue) */}
+                        <View style={styles.pullBar} />
 
-                    <FlatList
-                        data={cartItems}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={renderItem}
-                        contentContainerStyle={styles.listContent}
-                        ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <Feather name="shopping-cart" size={64} color="#ccc" />
-                                <Text style={styles.emptyText}>Ostoskorisi on tyhjä</Text>
-                                <TouchableOpacity style={styles.continueShoppingButton} onPress={onClose}>
-                                    <Text style={styles.continueShoppingText}>Jatka ostoksia</Text>
-                                </TouchableOpacity>
-                            </View>
-                        }
-                    />
-
-                    {cartItems.length > 0 && (
-                        <View style={styles.footer}>
-                            <View style={styles.totalContainer}>
-                                <Text style={styles.totalLabel}>Yhteensä:</Text>
-                                <Text style={styles.totalPrice}>{totalPrice.toFixed(2)} €</Text>
-                            </View>
-                            <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
-                                <Text style={styles.checkoutButtonText}>Siirry kassalle</Text>
+                        <View style={styles.header}>
+                            <Text style={styles.headerTitle}>Ostoskori</Text>
+                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                                <Feather name="x" size={24} color={COLORS.dark} />
                             </TouchableOpacity>
                         </View>
-                    )}
-                </View>
-            </SafeAreaView>
+
+                        <FlatList
+                            data={cartItems}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={renderItem}
+                            contentContainerStyle={styles.listContent}
+                            showsVerticalScrollIndicator={false}
+                            ListEmptyComponent={
+                                <View style={styles.emptyContainer}>
+                                    <View style={styles.emptyIconCircle}>
+                                        <Feather name="shopping-bag" size={40} color={COLORS.textGray} />
+                                    </View>
+                                    <Text style={styles.emptyText}>Ostoskorisi on tyhjä</Text>
+                                    <TouchableOpacity style={styles.continueShoppingButton} onPress={onClose}>
+                                        <Text style={styles.continueShoppingText}>Löydä pestävää</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            }
+                        />
+
+                        {cartItems.length > 0 && (
+                            <View style={styles.footer}>
+                                <View style={styles.totalRow}>
+                                    <Text style={styles.totalLabel}>Yhteensä</Text>
+                                    <Text style={styles.totalPriceText}>{totalPrice.toFixed(2)} €</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.checkoutButton}
+                                    onPress={handleCheckout}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={styles.checkoutButtonText}>Siirry kassalle</Text>
+                                    <Feather name="arrow-right" size={20} color={COLORS.white} style={{ marginLeft: 8 }} />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                </SafeAreaView>
+            </View>
         </Modal>
     );
 };
 
 const styles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+    },
     modalContainer: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
     },
     modalContent: {
-        flex: 1,
-        marginTop: 50,
-        backgroundColor: COLORS.gray,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        overflow: 'hidden',
+        height: '85%',
+        backgroundColor: '#F8F9FA',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 20,
+    },
+    pullBar: {
+        width: 40,
+        height: 5,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 3,
+        alignSelf: 'center',
+        marginTop: 12,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 20,
-        backgroundColor: COLORS.white,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        paddingHorizontal: 24,
+        paddingVertical: 20,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 24,
+        fontWeight: '800',
         color: COLORS.dark,
+        letterSpacing: -0.5,
     },
     closeButton: {
-        padding: 5,
+        backgroundColor: COLORS.lightGray,
+        padding: 8,
+        borderRadius: 20,
     },
     listContent: {
-        padding: 16,
+        padding: 20,
+        paddingBottom: 40,
     },
     cartItem: {
         flexDirection: 'row',
         backgroundColor: COLORS.white,
-        borderRadius: 12,
+        borderRadius: 20,
         padding: 16,
-        marginBottom: 12,
+        marginBottom: 16,
         alignItems: 'center',
-        justifyContent: 'space-between',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 2,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
     },
     itemDetails: {
         flex: 1,
+        paddingRight: 10,
     },
     itemTitle: {
-        fontSize: 16,
+        fontSize: 17,
         fontWeight: '600',
         color: COLORS.dark,
-        marginBottom: 4,
+        marginBottom: 2,
     },
     itemPrice: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 18,
+        fontWeight: '700',
         color: COLORS.primary,
     },
     itemSinglePrice: {
-        fontSize: 12,
-        color: '#888',
+        fontSize: 13,
+        color: COLORS.textGray,
+        marginTop: 2,
+    },
+    quantityWrapper: {
+        alignItems: 'flex-end',
     },
     quantityContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.gray,
-        borderRadius: 8,
+        backgroundColor: COLORS.lightGray,
+        borderRadius: 14,
         padding: 4,
     },
     qtyButton: {
-        padding: 8,
+        width: 32,
+        height: 32,
         backgroundColor: COLORS.white,
-        borderRadius: 6,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 1,
     },
     qtyText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
         marginHorizontal: 12,
-        minWidth: 20,
+        color: COLORS.dark,
+        minWidth: 15,
         textAlign: 'center',
     },
     footer: {
-        padding: 20,
+        padding: 24,
+        paddingTop: 16,
         backgroundColor: COLORS.white,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: COLORS.lightGray,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     },
-    totalContainer: {
+    totalRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 16,
+        alignItems: 'flex-end',
+        marginBottom: 20,
     },
     totalLabel: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: COLORS.dark,
+        fontSize: 16,
+        color: COLORS.textGray,
+        fontWeight: '500',
     },
-    totalPrice: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: COLORS.primary,
+    totalPriceText: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: COLORS.dark,
     },
     checkoutButton: {
         backgroundColor: COLORS.primary,
-        paddingVertical: 16,
-        borderRadius: 12,
+        flexDirection: 'row',
+        height: 60,
+        borderRadius: 18,
         alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 8,
     },
     checkoutButtonText: {
         color: COLORS.white,
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '700',
     },
     emptyContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingTop: 100,
+        marginTop: 60,
+    },
+    emptyIconCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: COLORS.lightGray,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
     },
     emptyText: {
-        fontSize: 18,
-        color: '#888',
-        marginTop: 20,
-        marginBottom: 30,
+        fontSize: 20,
+        fontWeight: '600',
+        color: COLORS.dark,
+        marginBottom: 8,
     },
     continueShoppingButton: {
+        marginTop: 10,
         paddingVertical: 12,
-        paddingHorizontal: 24,
-        backgroundColor: COLORS.primary,
-        borderRadius: 8,
+        paddingHorizontal: 28,
+        borderRadius: 14,
+        backgroundColor: COLORS.secondary,
     },
     continueShoppingText: {
-        color: COLORS.white,
-        fontWeight: '600',
+        color: COLORS.primary,
+        fontSize: 16,
+        fontWeight: '700',
     },
 });
 
