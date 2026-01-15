@@ -9,7 +9,7 @@ const COLORS = {
     gradientEnd: '#4da3e0ff',
 };
 
-const BasketImage = require("../../assets/images/pesuni-logo-pointer.png");
+const BasketImage = require("../../assets/images/pointy-basket-3d.png");
 
 interface HomeHeaderProps {
     onStartPress: () => void;

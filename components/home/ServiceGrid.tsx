@@ -1,7 +1,8 @@
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-
 import {
     ActivityIndicator,
+    Dimensions,
     FlatList,
     Image,
     ScrollView,
@@ -10,85 +11,102 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, {
+    interpolate,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
 import { useDispatch } from 'react-redux';
+import { supabase } from '../../lib/supabase';
 import { addToCart } from '../../redux/cartSlice';
 
-import { supabase } from '../../lib/supabase';
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-interface Product {
-    product_id: string;
-    name: string;
-    description: string;
-    image_url: string;
-    base_price: number;
-}
-
-interface Category {
-    id: string;
-    name: string;
-    category_id: string;
-    products: Product[];
-}
-
-const FILTER_OPTIONS = [
-    'Kaikki palvelut',
-    'Arjen pyykit',
-    'Kodintekstiilit',
-    'Mattopesu',
-    'Kengät & Erikoispesut',
+const FILTER_DATA = [
+    { name: 'Kaikki Pesut', icon: 'apps' },
+    { name: 'Arjen pyykit', icon: 'tshirt-crew' },
+    { name: 'Kodintekstiilit', icon: 'home-variant' },
+    { name: 'Mattopesu', icon: 'rug' },
+    { name: 'Kengät & Erikoispesut', icon: 'shoe-sneaker' },
 ];
 
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+const COLORS = {
+    primary: '#00c2ff',
+    success: '#00B5F0',
+    background: '#F8F9FD',
+    white: '#FFFFFF',
+    textDark: '#1A1B32',
+    textGray: '#6B7280',
+    border: '#F1F5F9',
+};
+
+// --- YKSITTÄINEN TUOTEKORTTI ---
+const ProductCard: React.FC<{ product: any; onOpenDetail: (p: any) => void }> = ({ product, onOpenDetail }) => {
     const dispatch = useDispatch();
     const [isAdded, setIsAdded] = useState(false);
 
-    const handleAddToCart = () => {
+    const handleAddToCart = (e: any) => {
+        e.stopPropagation();
         dispatch(addToCart({
             id: product.product_id,
             name: product.name,
-            price: product.base_price,
+            price: product.base_price
         }));
 
         setIsAdded(true);
-
-        setTimeout(() => {
-            setIsAdded(false);
-        }, 2000);
+        setTimeout(() => setIsAdded(false), 2000);
     };
 
     return (
-        <View style={styles.productCard}>
+        <TouchableOpacity
+            style={styles.productCard}
+            activeOpacity={0.9}
+            onPress={() => onOpenDetail(product)}
+        >
             <Image source={{ uri: product.image_url }} style={styles.productImage} resizeMode="cover" />
+
             <View style={styles.productInfo}>
-                <Text style={styles.productName}>{product.name}</Text>
-                <Text style={styles.productDescription} numberOfLines={2}>{product.description}</Text>
-                <Text style={styles.productPrice}>{product.base_price} €</Text>
+                <View style={styles.nameRow}>
+                    <Text style={styles.productName} numberOfLines={1}>{product.name}</Text>
+                    <Text style={styles.productPrice}>{product.base_price}€</Text>
+                </View>
+
+                <Text style={styles.productDescription} numberOfLines={2}>
+                    {product.description}
+                </Text>
 
                 <TouchableOpacity
-                    style={[styles.addButton, isAdded && { backgroundColor: '#4CAF50' }]}
+                    style={[styles.modernAddButton, isAdded && styles.addedButton]}
                     onPress={handleAddToCart}
                     disabled={isAdded}
                 >
-                    <Text style={styles.addButtonText}>
-                        {isAdded ? "Lisätty koriin! ✓" : "Lisää ostoskoriin"}
-                    </Text>
+                    <View style={styles.buttonContent}>
+                        <Feather name={isAdded ? "check" : "plus"} size={18} color={COLORS.white} />
+                        <Text style={styles.modernAddButtonText}>{isAdded ? "Lisätty Koriin" : "Lisää Koriin"}</Text>
+                    </View>
                 </TouchableOpacity>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 };
 
-type ServiceGridProps = {
-    ListHeaderComponent?: React.ReactNode;
-};
-
-const ServiceGrid = forwardRef<FlatList, ServiceGridProps>(({ ListHeaderComponent }, ref) => {
+// --- PÄÄKOMPONENTTI ---
+const ServiceGrid = forwardRef<FlatList, { ListHeaderComponent?: React.ReactNode }>(({ ListHeaderComponent }, ref) => {
+    const dispatch = useDispatch();
     const [loading, setLoading] = useState<boolean>(true);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [selectedFilter, setSelectedFilter] = useState<string>('Kaikki palvelut');
-    const [error, setError] = useState<string | null>(null);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [selectedFilter, setSelectedFilter] = useState<string>('Kaikki Pesut');
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+    const [modalAdded, setModalAdded] = useState(false);
 
     const internalRef = useRef<FlatList>(null);
+    const translateY = useSharedValue(SCREEN_HEIGHT);
 
     useImperativeHandle(ref, () => ({
         scrollToOffset: (params: { offset: number; animated?: boolean }) => {
@@ -96,253 +114,260 @@ const ServiceGrid = forwardRef<FlatList, ServiceGridProps>(({ ListHeaderComponen
         },
     }) as any);
 
-
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            setError(null);
-
-            const { data, error } = await supabase
+            const { data, error: fetchError } = await supabase
                 .from('categories')
-                .select(
-                    `
-             id,
-             name,
-             category_id,
-             products!inner (
-               product_id,
-               name,
-               description,
-               image_url,
-               base_price
-             )
-           `
-                )
+                .select(`id, name, category_id, products!inner (product_id, name, description, image_url, base_price)`)
                 .eq('products.is_active', true)
                 .order('sort_order');
 
-            if (error) {
-                console.error('Error fetching data:', error);
-                setError(error.message);
+            if (fetchError) {
+                setErrorMsg(fetchError.message);
             } else if (data) {
-                setCategories(data as Category[]);
+                setCategories(data);
             }
             setLoading(false);
         };
-
         fetchData();
     }, []);
 
-    const displayedCategories = useMemo(() => {
-        if (selectedFilter === 'Kaikki palvelut') {
-            return categories;
+    useEffect(() => {
+        if (selectedProduct) {
+            translateY.value = SCREEN_HEIGHT;
+            translateY.value = withSpring(0, { damping: 18, stiffness: 80, mass: 1 });
         }
-        return categories.filter(
-            (category) => category.name === selectedFilter
-        );
-    }, [categories, selectedFilter]);
+    }, [selectedProduct, translateY]);
 
-    const renderFilterButton = (filterName: string) => {
-        const isActive = filterName === selectedFilter;
-        return (
-            <TouchableOpacity
-                key={filterName}
-                style={[styles.filterButton, isActive && styles.filterButtonActive]}
-                onPress={() => setSelectedFilter(filterName)}
-            >
-                <Text
-                    style={[
-                        styles.filterButtonText,
-                        isActive && styles.filterButtonTextActive,
-                    ]}
-                >
-                    {filterName}
-                </Text>
-            </TouchableOpacity>
-        );
+    const closeSheet = () => {
+        translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 }, () => {
+            runOnJS(setSelectedProduct)(null);
+        });
     };
 
-    const renderCategory = ({ item: category }: { item: Category }) => (
-        <View key={category.id} style={styles.categorySection}>
-            <Text style={styles.categoryTitle}>{category.name}</Text>
-            <FlatList
-                data={category.products}
-                renderItem={({ item }) => <ProductCard product={item} />}
-                keyExtractor={(product) => product.product_id}
-                horizontal={true}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.productList}
-            />
-        </View>
-    );
+    const gesture = Gesture.Pan()
+        .onUpdate((event) => {
+            if (event.translationY > 0) {
+                translateY.value = event.translationY;
+            }
+        })
+        .onEnd((event) => {
+            if (event.translationY > 150 || event.velocityY > 500) {
+                runOnJS(closeSheet)();
+            } else {
+                translateY.value = withSpring(0);
+            }
+        });
 
-    if (loading) {
-        return (
-            <View style={styles.centered}>
-                <ActivityIndicator size="large" />
-                <Text>Loading services...</Text>
-            </View>
-        );
-    }
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: translateY.value }],
+    }));
 
-    if (error) {
-        return (
-            <View style={styles.centered}>
-                <Text style={styles.errorText}>Failed to load data: {error}</Text>
-            </View>
-        );
-    }
+    const backdropStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(translateY.value, [0, SCREEN_HEIGHT], [1, 0]),
+        display: translateY.value >= SCREEN_HEIGHT - 1 ? 'none' : 'flex',
+    }));
+
+    const handleModalAdd = () => {
+        if (!selectedProduct || modalAdded) return;
+
+        dispatch(addToCart({
+            id: selectedProduct.product_id,
+            name: selectedProduct.name,
+            price: selectedProduct.base_price
+        }));
+
+        setModalAdded(true);
+        setTimeout(() => {
+            setModalAdded(false);
+            closeSheet();
+        }, 1200);
+    };
+
+    const displayedCategories = useMemo(() => {
+        if (selectedFilter === 'Kaikki Pesut') return categories;
+        return categories.filter((category) => category.name === selectedFilter);
+    }, [categories, selectedFilter]);
+
+    if (loading) return <View style={styles.centered}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
     return (
-        <FlatList
-            ref={internalRef}
-            style={styles.container}
-            data={displayedCategories}
-            renderItem={renderCategory}
-            keyExtractor={(category) => category.id}
-            ListHeaderComponent={
-                <>
-                    {ListHeaderComponent}
-                    <View style={styles.filterContainer}>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.filterScroll}
-                        >
-                            {FILTER_OPTIONS.map((filter) => renderFilterButton(filter))}
-                        </ScrollView>
-                    </View>
-                </>
-            }
-            ListEmptyComponent={
-                <View style={styles.centeredEmpty}>
-                    <Text>No services found for this filter.</Text>
-                </View>
-            }
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
+                <FlatList
+                    ref={internalRef}
+                    style={styles.container}
+                    data={displayedCategories}
+                    renderItem={({ item }) => (
+                        <View style={styles.categorySection}>
+                            <Text style={styles.categoryTitle}>{item.name}</Text>
+                            <FlatList
+                                data={item.products}
+                                renderItem={({ item: p }) => <ProductCard product={p} onOpenDetail={setSelectedProduct} />}
+                                keyExtractor={(p) => p.product_id}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.productList}
+                                snapToInterval={292}
+                                decelerationRate="fast"
+                            />
+                        </View>
+                    )}
+                    keyExtractor={(item) => item.id}
+                    ListHeaderComponent={
+                        <>
+                            {ListHeaderComponent}
+                            {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-            ListFooterComponent={<View style={{ height: 100 }} />}
-        />
+                            <View style={styles.filterWrapper}>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+                                    {FILTER_DATA.map((item) => {
+                                        const isActive = item.name === selectedFilter;
+                                        return (
+                                            <TouchableOpacity
+                                                key={item.name}
+                                                activeOpacity={0.8}
+                                                style={[styles.filterItem, isActive && styles.activeFilterItem]}
+                                                onPress={() => setSelectedFilter(item.name)}
+                                            >
+                                                <View style={[styles.iconBox, isActive && styles.activeIconBox]}>
+                                                    <MaterialCommunityIcons
+                                                        name={item.icon as any}
+                                                        size={24}
+                                                        color={isActive ? COLORS.white : COLORS.primary}
+                                                    />
+                                                </View>
+                                                <Text style={[styles.filterLabel, isActive && styles.activeFilterLabel]}>
+                                                    {item.name}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+                        </>
+                    }
+                    ListFooterComponent={<View style={{ height: 100 }} />}
+                />
+
+                {/* --- DETAIL BOTTOM SHEET --- */}
+                {selectedProduct && (
+                    <View style={StyleSheet.absoluteFill}>
+                        <Animated.View style={[styles.modalOverlay, backdropStyle]}>
+                            <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={closeSheet} />
+                        </Animated.View>
+
+                        <GestureDetector gesture={gesture}>
+                            <Animated.View style={[styles.modalContent, animatedStyle]}>
+                                <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                                    <View style={styles.modalImageContainer}>
+                                        <Image source={{ uri: selectedProduct.image_url }} style={styles.modalImage} />
+                                        <TouchableOpacity style={styles.closeButtonOverlay} onPress={closeSheet}>
+                                            <Feather name="x" size={20} color={COLORS.textDark} />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <View style={styles.modalTextContainer}>
+                                        <View style={styles.modalHeaderRow}>
+                                            <Text style={styles.modalTitle}>{selectedProduct.name}</Text>
+                                            <Text style={styles.modalPrice}>{selectedProduct.base_price}€</Text>
+                                        </View>
+                                        <View style={styles.divider} />
+                                        <Text style={styles.modalDescriptionTitle}>Tuotekuvaus</Text>
+                                        <Text style={styles.modalDescriptionText}>{selectedProduct.description}</Text>
+                                    </View>
+                                    <View style={{ height: 120 }} />
+                                </ScrollView>
+
+                                {/* --- RAISED FOOTER --- */}
+                                <View style={styles.modalFooter}>
+                                    <TouchableOpacity
+                                        style={[styles.modalAddButton, modalAdded && styles.addedButton]}
+                                        onPress={handleModalAdd}
+                                        disabled={modalAdded}
+                                    >
+                                        <View style={styles.buttonContent}>
+                                            <Feather name={modalAdded ? "check" : "shopping-cart"} size={20} color={COLORS.white} />
+                                            <Text style={styles.modalAddButtonText}>
+                                                {modalAdded ? "Lisätty koriin!" : "Lisää ostoskoriin"}
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                </View>
+                            </Animated.View>
+                        </GestureDetector>
+                    </View>
+                )}
+            </View>
+        </GestureHandlerRootView>
     );
 });
 
-// FIX: Add the display name
 ServiceGrid.displayName = 'ServiceGrid';
 
-export default ServiceGrid;
-
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
+    container: { flex: 1, backgroundColor: COLORS.background },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 400 },
+    filterWrapper: { paddingVertical: 15 },
+    filterScroll: { paddingHorizontal: 20, gap: 15 },
+    filterItem: { alignItems: 'center', minWidth: 80 },
+    activeFilterItem: { transform: [{ scale: 1.02 }] },
+    iconBox: {
+        width: 60, height: 60, borderRadius: 20,
+        backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center',
+        marginBottom: 8, borderWidth: 1, borderColor: COLORS.border,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05, shadowRadius: 5, elevation: 2,
     },
-    centered: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+    activeIconBox: { backgroundColor: COLORS.primary, borderColor: COLORS.primary, shadowColor: COLORS.primary, shadowOpacity: 0.3 },
+    filterLabel: { fontSize: 11, fontWeight: '600', color: COLORS.textGray, textAlign: 'center' },
+    activeFilterLabel: { color: COLORS.primary, fontWeight: '700' },
+    categorySection: { paddingVertical: 10 },
+    categoryTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textDark, paddingHorizontal: 20, marginBottom: 12 },
+    productList: { paddingLeft: 20, paddingRight: 8 },
+    productCard: { width: 280, backgroundColor: COLORS.white, borderRadius: 24, marginRight: 12, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border, elevation: 2, overflow: 'hidden' },
+    productImage: { width: '100%', height: 145 },
+    productInfo: { padding: 16 },
+    nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    productName: { flex: 1, fontSize: 16, fontWeight: '700', color: COLORS.textDark, marginRight: 8 },
+    productPrice: { fontSize: 17, fontWeight: '800', color: COLORS.primary },
+    productDescription: { fontSize: 13, color: COLORS.textGray, lineHeight: 18, marginBottom: 16, minHeight: 36 },
+    modernAddButton: { backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    addedButton: { backgroundColor: COLORS.success },
+    buttonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    modernAddButtonText: { color: COLORS.white, fontWeight: '700', fontSize: 14, marginLeft: 6 },
+    modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+    modalContent: {
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        backgroundColor: COLORS.white, borderTopLeftRadius: 32, borderTopRightRadius: 32,
+        height: SCREEN_HEIGHT * 0.85, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10, elevation: 20,
+        overflow: 'hidden',
+    },
+    modalImageContainer: { width: '100%', height: 320, position: 'relative' },
+    modalImage: { width: '100%', height: '100%' },
+    closeButtonOverlay: {
+        position: 'absolute', top: 20, right: 20, backgroundColor: 'rgba(255,255,255,0.9)',
+        width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', zIndex: 99,
+    },
+    modalTextContainer: { padding: 24 },
+    modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+    modalTitle: { fontSize: 24, fontWeight: '800', color: COLORS.textDark, flex: 1 },
+    modalPrice: { fontSize: 24, fontWeight: '800', color: COLORS.primary },
+    divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 15 },
+    modalDescriptionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textDark, marginBottom: 10 },
+    modalDescriptionText: { fontSize: 16, lineHeight: 24, color: COLORS.textGray },
+    modalFooter: {
         padding: 20,
-        minHeight: 300,
+        paddingBottom: 20,
+        marginBottom: 80, // This lifts it above your navbar
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+        backgroundColor: COLORS.white
     },
-    centeredEmpty: {
-        padding: 40,
-        alignItems: 'center',
-    },
-    errorText: {
-        color: 'red',
-        padding: 20,
-        textAlign: 'center',
-    },
-    filterContainer: {
-        paddingVertical: 10,
-        backgroundColor: '#ffffff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    filterScroll: {
-        paddingHorizontal: 12,
-    },
-    filterButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        backgroundColor: '#e9ecef',
-        marginRight: 8,
-    },
-    filterButtonActive: {
-        backgroundColor: '#00cce0',
-    },
-    filterButtonText: {
-        fontSize: 14,
-        color: '#333',
-        fontWeight: '500',
-    },
-    filterButtonTextActive: {
-        color: '#ffffff',
-        fontWeight: '700',
-    },
-    categorySection: {
-        marginTop: 16,
-        backgroundColor: '#ffffff',
-    },
-    categoryTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#212529',
-        paddingHorizontal: 16,
-        marginBottom: 16,
-        paddingTop: 16,
-        textAlign: 'center',
-    },
-    productList: {
-        paddingLeft: 16,
-        paddingRight: 8,
-    },
-    productCard: {
-        width: 280,
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
-        marginRight: 12,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    productImage: {
-        width: '100%',
-        height: 150,
-        borderTopLeftRadius: 12,
-        borderTopRightRadius: 12,
-    },
-    productInfo: {
-        padding: 12,
-    },
-    productName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#333',
-    },
-    productDescription: {
-        fontSize: 13,
-        color: '#666',
-        marginTop: 4,
-        minHeight: 32,
-    },
-    productPrice: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#000',
-        marginTop: 8,
-    },
-    addButton: {
-        backgroundColor: '#00cce0',
-        paddingVertical: 8,
-        borderRadius: 8,
-        marginTop: 10,
-        alignItems: 'center',
-    },
-    addButtonText: {
-        color: '#fff',
-        fontWeight: '600',
-        fontSize: 14,
-    },
+    modalAddButton: { backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
+    modalAddButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '700', marginLeft: 10 },
+    errorText: { color: '#E85D5D', textAlign: 'center', margin: 10 }
 });
+
+export default ServiceGrid;

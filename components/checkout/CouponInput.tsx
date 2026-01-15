@@ -1,55 +1,41 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View, ViewStyle } from 'react-native';
-import { supabase } from '../../lib/supabase'; // Oletetaan, että Supabase-client on saatavilla täältä
+import { supabase } from '../../lib/supabase';
 
 const COLORS = {
     white: '#FFFFFF',
     darkText: '#0A1B32',
     textGray: '#6B7280',
-    primary: '#00c2ff', // Nappi ja success-väri
+    primary: '#00c2ff',
     lightGray: '#F8F9FD',
     borderColor: '#EFEFEF',
-    success: '#4CAF50', // Onnistunut tarkistus
-    error: '#FF4500', // Virhe
+    success: '#4CAF50',
+    error: '#FF4500',
 };
 
-// Tietokantataulun rakenne (pelkkä olennainen osa)
 interface Coupon {
     id: string;
     code: string;
     discount_type: 'percentage' | 'fixed';
     discount_value: number;
-    usage_limit: number;
+    usage_limit: number | null;
     usage_count: number;
-    valid_from: string;
-    valid_until: string;
+    valid_from: string | null;
+    valid_until: string | null;
 }
 
 interface CouponInputProps {
-    onCouponApplied: (coupon: Coupon | null) => void; // Välittää kelvollisen kupongin takaisin
-    currentTotal: number; // Tilauksen nykyinen kokonaissumma
+    onCouponApplied: (coupon: Coupon | null) => void;
+    currentTotal: number;
     style?: ViewStyle;
 }
 
-const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, currentTotal, style }) => {
+const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, style }) => {
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [validationMessage, setValidationMessage] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-    // Päivämäärämuunnin (helpottaa vertailua)
-    const isCouponCurrentlyValid = (coupon: Coupon): boolean => {
-        const now = new Date();
-        const validFrom = new Date(coupon.valid_from);
-        const validUntil = new Date(coupon.valid_until);
-
-        return (
-            validFrom <= now &&
-            validUntil >= now &&
-            coupon.usage_count < coupon.usage_limit
-        );
-    };
 
     const handleApplyCoupon = async () => {
         if (!couponCode) {
@@ -60,48 +46,69 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, currentTotal
         setIsLoading(true);
         setValidationMessage(null);
         setAppliedCoupon(null);
-        onCouponApplied(null); // Nollaa kuponki ensin
+        onCouponApplied(null);
 
         try {
-            // 1. Hae kuponki tietokannasta
+            // 1. Haetaan kuponki
             const { data: couponData, error } = await supabase
                 .from('coupons')
                 .select('*')
-                .eq('code', couponCode.toUpperCase())
-                .limit(1)
+                .eq('code', couponCode.trim().toUpperCase())
                 .single();
 
             if (error || !couponData) {
-                setValidationMessage({ message: "Kuponkikoodi on virheellinen.", type: 'error' });
+                setValidationMessage({ message: "Kuponkikoodia ei löytynyt.", type: 'error' });
                 return;
             }
 
             const coupon = couponData as Coupon;
+            const now = new Date();
 
-            // 2. Tarkista kelpoisuus (päivämäärät ja käyttörajat)
-            if (!isCouponCurrentlyValid(coupon)) {
-                setValidationMessage({ message: "Kuponki ei ole enää voimassa tai sen käyttömäärä on ylittynyt.", type: 'error' });
-                return;
+            // 2. TARKISTUKSET (Käsittelee NULL-arvot oikein)
+
+            // Alkupäivämäärä (jos määritelty)
+            if (coupon.valid_from) {
+                const validFrom = new Date(coupon.valid_from);
+                if (now < validFrom) {
+                    setValidationMessage({ message: "Kuponki ei ole vielä astunut voimaan.", type: 'error' });
+                    return;
+                }
             }
 
-            // 3. Laske alennus (vain näyttöä varten)
-            let discountDisplay;
-            if (coupon.discount_type === 'percentage') {
-                discountDisplay = `${coupon.discount_value}% alennus`;
-            } else {
-                discountDisplay = `${coupon.discount_value.toFixed(2)} € alennus`;
+            // Loppupäivämäärä (jos määritelty)
+            if (coupon.valid_until) {
+                const validUntil = new Date(coupon.valid_until);
+                validUntil.setHours(23, 59, 59, 999); // Koko päivä loppuun asti
+                if (now > validUntil) {
+                    setValidationMessage({ message: "Kuponki on jo vanhentunut.", type: 'error' });
+                    return;
+                }
             }
 
-            // 4. Onnistunut: Päivitä tila ja ilmoita vanhemmalle komponentille
+            // Käyttöraja (jos määritelty ja suurempi kuin nolla)
+            if (coupon.usage_limit !== null && coupon.usage_limit > 0) {
+                if (coupon.usage_count >= coupon.usage_limit) {
+                    setValidationMessage({ message: "Kupongin käyttömäärä on tullut täyteen.", type: 'error' });
+                    return;
+                }
+            }
+
+            // 3. Alennuksen näyttömuoto
+            const discountDisplay = coupon.discount_type === 'percentage'
+                ? `${coupon.discount_value}%`
+                : `${coupon.discount_value.toFixed(2)} €`;
+
+            // 4. Onnistuminen
             setAppliedCoupon(coupon);
             onCouponApplied(coupon);
             setValidationMessage({
-                message: `Kuponki "${couponCode}" aktivoitu! Saat ${discountDisplay}.`,
+                message: `Kuponki "${coupon.code}" aktivoitu! Alennus: ${discountDisplay}.`,
                 type: 'success'
             });
 
-        } catch {
-            setValidationMessage({ message: "Tarkistuksessa tapahtui virhe.", type: 'error' });
+        } catch (err) {
+            console.error("Kuponkivirhe:", err);
+            setValidationMessage({ message: "Tarkistuksessa tapahtui odottamaton virhe.", type: 'error' });
         } finally {
             setIsLoading(false);
         }
@@ -114,7 +121,6 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, currentTotal
         onCouponApplied(null);
     };
 
-    // Näytettävä tila
     const statusColor = validationMessage?.type === 'success' ? COLORS.success : COLORS.error;
     const isApplied = !!appliedCoupon;
 
@@ -149,22 +155,22 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, currentTotal
 
             {validationMessage && (
                 <View style={styles.messageContainer}>
-                    <Feather name={validationMessage.type === 'success' ? "check-circle" : "alert-circle"}
-                        size={14} color={statusColor} />
+                    <Feather
+                        name={validationMessage.type === 'success' ? "check-circle" : "alert-circle"}
+                        size={14}
+                        color={statusColor}
+                    />
                     <Text style={[styles.messageText, { color: statusColor }]}>
                         {validationMessage.message}
                     </Text>
                 </View>
             )}
 
-            {/* TÄRKEÄÄ: Ilmoita vanhemmalle komponentille (CheckoutScreen)
-                 kuponkin arvo, jotta se voi päivittää lopullisen hinnan. */}
             {isApplied && (
                 <Text style={styles.appliedText}>
                     ✅ Kuponki aktiivinen
                 </Text>
             )}
-
         </View>
     );
 };

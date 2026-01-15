@@ -8,6 +8,7 @@ import {
     Text,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { selectCartItems } from '../redux/cartSlice';
 
@@ -23,52 +24,60 @@ interface FloatingCartBubbleProps {
 }
 
 const FloatingCartBubble: React.FC<FloatingCartBubbleProps> = ({ onPress }) => {
+    const insets = useSafeAreaInsets();
     const cartItems = useSelector(selectCartItems);
     const itemCount = cartItems.length;
 
-    const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - BUBBLE_SIZE - SNAP_PADDING, y: SCREEN_HEIGHT / 2 })).current;
+    // Määritetään turvalliset rajat
+    const SAFE_BOTTOM = SCREEN_HEIGHT - insets.bottom - BUBBLE_SIZE - SNAP_PADDING;
+    const SAFE_TOP = insets.top + SNAP_PADDING;
+    const SAFE_RIGHT = SCREEN_WIDTH - BUBBLE_SIZE - SNAP_PADDING;
+    const SAFE_LEFT = SNAP_PADDING;
+
+    // Alustetaan pallo turvalliseen paikkaan (oikea alareuna navigoinnin yläpuolella)
+    const pan = useRef(new Animated.ValueXY({
+        x: SAFE_RIGHT,
+        y: SAFE_BOTTOM - 100 // Hieman irti aivan alareunasta oletuksena
+    })).current;
 
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
-
             onPanResponderGrant: () => {
-                pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
+                pan.setOffset({
+                    x: (pan.x as any)._value,
+                    y: (pan.y as any)._value
+                });
                 pan.setValue({ x: 0, y: 0 });
             },
-
             onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
                 useNativeDriver: false,
             }),
-
             onPanResponderRelease: (evt, gestureState) => {
                 pan.flattenOffset();
 
                 const distance = Math.sqrt(gestureState.dx * gestureState.dx + gestureState.dy * gestureState.dy);
 
+                // Klikkaus-tunnistus
                 if (distance < TAP_THRESHOLD) {
                     onPress();
                     return;
                 }
 
                 const currentX = (pan.x as any)._value;
-                const releaseVelocity = gestureState.vx;
+                const currentY = (pan.y as any)._value;
 
-                const isNearLeft = currentX < SCREEN_WIDTH / 2;
+                // Lasketaan mihin reunaan pallo "snappaa"
+                let targetX = currentX < SCREEN_WIDTH / 2 ? SAFE_LEFT : SAFE_RIGHT;
 
-                let targetX;
-
-                if (isNearLeft || releaseVelocity < -0.5) {
-                    targetX = SNAP_PADDING;
-                } else {
-                    targetX = SCREEN_WIDTH - BUBBLE_SIZE - SNAP_PADDING;
-                }
+                // Varmistetaan ettei pallo jää pystysuunnassa suoja-alueiden ulkopuolelle
+                let targetY = Math.min(Math.max(currentY, SAFE_TOP), SAFE_BOTTOM);
 
                 Animated.spring(pan, {
-                    toValue: { x: targetX, y: (pan.y as any)._value },
+                    toValue: { x: targetX, y: targetY },
                     useNativeDriver: false,
-                    speed: 15,
-                    bounciness: 0,
+                    damping: 20,
+                    stiffness: 150,
                 }).start();
             },
         })
@@ -87,10 +96,8 @@ const FloatingCartBubble: React.FC<FloatingCartBubbleProps> = ({ onPress }) => {
             {...panResponder.panHandlers}
         >
             <View style={styles.bubble}>
-                {/* SININEN OSTOSKORI-IKONI */}
                 <Feather name="shopping-cart" size={24} color={COLORS.white} />
 
-                {/* SININEN TUOTTEIDEN LUKUMÄÄRÄ */}
                 {itemCount > 0 && (
                     <View style={styles.itemCountBubble}>
                         <Text style={styles.itemCountText}>{itemCount}</Text>
@@ -101,13 +108,10 @@ const FloatingCartBubble: React.FC<FloatingCartBubbleProps> = ({ onPress }) => {
     );
 };
 
-export default FloatingCartBubble;
-
-// --- UUDET TYYLIT ---
+// --- TYYLIT ---
 const COLORS = {
-    white: '#e8e8e8ff',
-    primary: '#00c2ff', // Käytetään tätä sinisenä värinä
-    redAccent: '#FF4500',
+    white: '#FFFFFF',
+    primary: '#00c2ff',
 };
 
 const styles = StyleSheet.create({
@@ -116,12 +120,15 @@ const styles = StyleSheet.create({
         zIndex: 9999,
         width: BUBBLE_SIZE,
         height: BUBBLE_SIZE,
+        // Alkuperäinen sijoittelu on top/left 0, koska transform hoitaa loput
+        top: 0,
+        left: 0,
     },
     bubble: {
         width: BUBBLE_SIZE,
         height: BUBBLE_SIZE,
         borderRadius: BUBBLE_SIZE / 2,
-        backgroundColor: COLORS.primary, // VALKOINEN TAUSTA
+        backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
@@ -129,22 +136,28 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 4.65,
         elevation: 8,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
     },
     itemCountBubble: {
         position: 'absolute',
         top: 0,
         right: 0,
-        backgroundColor: COLORS.white, // Sininen tausta lukumäärälle
+        backgroundColor: COLORS.white,
         borderRadius: 10,
-        minWidth: 20, // Varmistaa, että pallo on riittävän iso yhdelle tai kahdelle numerolle
-        height: 20,
+        minWidth: 22,
+        height: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 4, // Lisää hieman tilaa sivuille
+        paddingHorizontal: 4,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
     },
     itemCountText: {
-        color: COLORS.primary, // Valkoinen teksti sinisellä pohjalla
+        color: COLORS.primary,
         fontSize: 12,
         fontWeight: 'bold',
     },
 });
+
+export default FloatingCartBubble;

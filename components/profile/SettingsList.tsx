@@ -41,8 +41,9 @@ const SettingsList: React.FC<SettingsListProps> = ({ title, items }) => {
 const styles = StyleSheet.create({
     container: {
         width: '100%',
-        paddingHorizontal: 16,
+        paddingHorizontal: 15,
         marginVertical: 10,
+        marginBottom: 70,
     },
     title: {
         fontSize: 16,
@@ -71,6 +72,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#F0F0F0',
+
     },
     lastItemRow: {
         borderBottomWidth: 0,

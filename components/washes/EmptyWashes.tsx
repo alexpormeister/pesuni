@@ -1,34 +1,23 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-const { width } = Dimensions.get('window');
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const EmptyCart: React.FC = () => {
     const router = useRouter();
 
-    // Funktio, joka hoitaa siirtymisen tilaushistoriaan
-    const handleOrderHistory = () => {
-        router.push({
-            pathname: '/orders',
-            params: { initialTab: 'History' }
-        });
-    };
-
     // Funktio, joka hoitaa siirtymisen ja scrollauksen HomeScreeenille (index-sivulle)
     const handleSelectWashScroll = () => {
-        // Lähetetään parametri 'scrollToMenu' HomeScreeenille (index-sivulle)
+        // Lähetetään parametri 'action' HomeScreeenille
         router.push({
-            pathname: '/', // Oletettu polku HomeScreeenille
+            pathname: '/',
             params: { action: 'scrollToMenu' }
         });
     };
 
-
     return (
         <View style={styles.container}>
             <Image
-                source={require("../../assets/images/empty-basket-removebg-preview.png")}
+                source={require("../../assets/images/empty-basket-3d.png")}
                 style={styles.image}
                 resizeMode="contain"
             />
@@ -38,13 +27,8 @@ const EmptyCart: React.FC = () => {
                 Näyttäisi siltä, että et ole lisännyt vielä pesuja koriisi
             </Text>
 
-            {/* KÄYTETÄÄN UUTTA SCROLLAAVAA FUNKTIOTA */}
             <TouchableOpacity style={styles.primaryButton} onPress={handleSelectWashScroll}>
                 <Text style={styles.primaryButtonText}>Valitse Pesu</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleOrderHistory}>
-                <Text style={styles.secondaryButtonText}>Tilaushistoria</Text>
             </TouchableOpacity>
         </View>
     );
@@ -73,7 +57,7 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         textAlign: 'center',
         marginBottom: 32,
-        maxWidth: width * 0.7,
+        maxWidth: '80%',
     },
     primaryButton: {
         backgroundColor: '#00c2ff',
@@ -82,7 +66,6 @@ const styles = StyleSheet.create({
         borderRadius: 9999,
         width: '100%',
         maxWidth: 320,
-        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
@@ -94,12 +77,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
         textAlign: 'center',
-    },
-    secondaryButtonText: {
-        color: 'black',
-        fontWeight: '600',
-        fontSize: 16,
-        textDecorationLine: "underline",
     },
 });
 

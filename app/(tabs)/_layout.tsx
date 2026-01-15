@@ -4,33 +4,29 @@ import BottomNavBar from "../../components/BottomNavBar";
 
 export default function TabLayout() {
   const router = useRouter();
-
   const pathname = usePathname();
 
+  // Käsitellään välilehden vaihto
   const handleTabChange = (tabId: string) => {
     if (tabId === 'home') {
       router.push({ pathname: '/' });
     } else if (tabId === 'orders') {
+      // Ohjataan aina washes-sivulle, kun painetaan tilaus-ikonia
       router.push({ pathname: '/washes' });
     } else if (tabId === 'profile') {
       router.push({ pathname: '/profile' });
     }
-    else if (tabId === 'orders') {
-      router.push({ pathname: '/orders' });
-    }
   };
 
+  // Määritetään mikä ikoni on aktiivisena navigaatiopalkissa
   const getActiveTab = () => {
-
     if (pathname === '/washes') {
       return 'orders';
     }
     if (pathname === '/profile') {
       return 'profile';
     }
-    if (pathname === '/orders') {
-      return 'orders';
-    }
+    // Oletuksena koti
     return 'home';
   };
 
@@ -46,7 +42,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ headerShown: false }} />
       <Tabs.Screen name="washes" options={{ headerShown: false }} />
       <Tabs.Screen name="profile" options={{ headerShown: false }} />
-      <Tabs.Screen name="orders" options={{ headerShown: false }} />
+      {/* Poistettu Tabs.Screen name="orders" */}
     </Tabs>
   );
 }
