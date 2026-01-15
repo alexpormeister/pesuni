@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -15,6 +14,7 @@ import {
     View
 } from 'react-native';
 import CountryPicker, { CountryCode } from 'react-native-country-picker-modal';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { supabase } from '../../lib/supabase';
@@ -29,15 +29,16 @@ const COLORS = {
     dark: '#333333',
     textGray: '#666666',
     border: '#e0e0e0',
-    danger: '#FF3B30'
+    danger: '#FF3B30',
+    success: '#34C759'
 };
 
 const CALLING_CODES: { [key: string]: string } = {
-    'FI': '358',
-    'US': '1',
-    'SE': '46',
-    'NO': '47',
-    'DE': '49',
+    'FI': '358', 'US': '1', 'SE': '46', 'NO': '47', 'DE': '49',
+};
+
+const validateEmail = (email: string) => {
+    return String(email).toLowerCase().match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
 };
 
 const getInitialCountryCode = (phone: string | null | undefined): CountryCode => {
@@ -48,6 +49,27 @@ const getInitialCountryCode = (phone: string | null | undefined): CountryCode =>
     return 'FI';
 };
 
+// --- CUSTOM ALERT KOMPONENTTI ---
+const StatusAlert = ({ visible, type, message, onClose }: { visible: boolean, type: 'success' | 'error', message: string, onClose: () => void }) => {
+    if (!visible) return null;
+    return (
+        <Modal transparent visible={visible} animationType="fade">
+            <View style={styles.alertOverlay}>
+                <View style={styles.alertBox}>
+                    <View style={[styles.alertIconBg, { backgroundColor: type === 'success' ? COLORS.success + '20' : COLORS.danger + '20' }]}>
+                        <Feather name={type === 'success' ? "check-circle" : "alert-circle"} size={40} color={type === 'success' ? COLORS.success : COLORS.danger} />
+                    </View>
+                    <Text style={styles.alertTitle}>{type === 'success' ? 'Onnistui!' : 'Hups!'}</Text>
+                    <Text style={styles.alertMessage}>{message}</Text>
+                    <TouchableOpacity style={[styles.alertButton, { backgroundColor: type === 'success' ? COLORS.primary : COLORS.danger }]} onPress={onClose}>
+                        <Text style={styles.alertButtonText}>Selvä</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
 export default function PersonalInfoScreen() {
     const router = useRouter();
     const dispatch = useDispatch();
@@ -56,7 +78,10 @@ export default function PersonalInfoScreen() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [deleting, setDeleting] = useState(false);
+
+    const [alertConfig, setAlertConfig] = useState<{ visible: boolean, type: 'success' | 'error', message: string }>({
+        visible: false, type: 'success', message: ''
+    });
 
     const [modalVisible, setModalVisible] = useState(false);
     const [editingField, setEditingField] = useState<'name' | 'email' | 'phone' | 'address' | null>(null);
@@ -72,73 +97,49 @@ export default function PersonalInfoScreen() {
         dispatch(fetchUserProfile() as any).finally(() => setLoading(false));
     }, [dispatch]);
 
-    // PersonalInfoScreen.tsx sisällä
+    const showAlert = (type: 'success' | 'error', message: string) => {
+        setAlertConfig({ visible: true, type, message });
+    };
 
     const handleSaveField = async () => {
         if (!profile || !editingField) return;
+
+        if (editingField === 'email' && !validateEmail(tempValue)) {
+            showAlert('error', 'Syötä oikea sähköpostiosoite.');
+            return;
+        }
+
         setSaving(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Ei käyttäjää');
 
             let updates: Partial<UserProfile> = {};
+            if (editingField === 'name') {
+                updates = { first_name: tempFirstName, last_name: tempLastName };
+            } else if (editingField === 'phone') {
+                const callingCode = CALLING_CODES[countryCode];
+                const numberPart = tempValue.replace(/[^0-9]/g, '');
+                updates = { phone: `+${callingCode}${numberPart}` };
+            } else {
+                updates = { [editingField]: tempValue };
+            }
 
-            // ... muut kentät säilyvät ennallaan ...
-
-            // KORJAUS: Käytetään .update().eq() jotta ei herjaa puuttuvasta sähköpostista
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    updated_at: new Date().toISOString(),
-                    ...updates,
-                })
-                .eq('user_id', user.id);
-
+            const { error } = await supabase.from('profiles').update({ updated_at: new Date().toISOString(), ...updates }).eq('user_id', user.id);
             if (error) throw error;
 
             dispatch(updateProfileFields(updates));
             setModalVisible(false);
-            Alert.alert('Onnistui', 'Tiedot päivitetty.');
+            showAlert('success', 'Tietosi on nyt päivitetty järjestelmään.');
         } catch (error: any) {
-            Alert.alert('Päivitys epäonnistui', error.message);
+            showAlert('error', error.message);
         } finally {
             setSaving(false);
         }
     };
-    const handleDeleteAccount = async () => {
-        Alert.alert(
-            "Poista käyttäjätili",
-            "Oletko varma? Kaikki tietosi, tilaushistoriasi ja asetuksesi poistetaan pysyvästi. Tätä ei voi peruuttaa.",
-            [
-                { text: "Peruuta", style: "cancel" },
-                {
-                    text: "Poista tili",
-                    style: "destructive",
-                    onPress: async () => {
-                        setDeleting(true);
-                        try {
-                            const { error } = await supabase.rpc('delete_user_account');
-                            if (error) throw error;
 
-                            // Kirjaudutaan ulos
-                            await supabase.auth.signOut();
-
-                            // Tyhjennetään navigointipino ja ohjataan juureen. 
-                            // Tämä pakottaa Expo Routerin re-evaluoimaan auth-tilan.
-                            router.dismissAll();
-                            router.replace('/' as any);
-
-                            Alert.alert("Tili poistettu", "Tiedostosi on poistettu järjestelmästä.");
-                        } catch (err: any) {
-                            console.error("Poistovirheen syy:", err);
-                            Alert.alert("Virhe", "Tilin poistaminen epäonnistui. Ota yhteys tukeen.");
-                        } finally {
-                            setDeleting(false);
-                        }
-                    }
-                }
-            ]
-        );
+    const handleDeleteAccount = () => {
+        showAlert('error', 'Tilin poistaminen vaatii yhteydenoton tukeen turvallisuussyistä.');
     };
 
     const openEditModal = (field: 'name' | 'email' | 'phone' | 'address') => {
@@ -159,14 +160,17 @@ export default function PersonalInfoScreen() {
         setModalVisible(true);
     };
 
-    const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
-
-    if (loading) {
-        return <View style={styles.centered}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
-    }
+    if (loading) return <View style={styles.centered}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
+            <StatusAlert
+                visible={alertConfig.visible}
+                type={alertConfig.type}
+                message={alertConfig.message}
+                onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+            />
+
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.push('/profile')}>
                     <Feather name="chevron-left" size={28} color={COLORS.dark} />
@@ -177,69 +181,61 @@ export default function PersonalInfoScreen() {
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.infoList}>
-                    <InfoItem label="Nimi" value={fullName} onPress={() => openEditModal('name')} />
+                    <InfoItem label="Nimi" value={`${profile.first_name || ''} ${profile.last_name || ''}`.trim()} onPress={() => openEditModal('name')} />
                     <InfoItem label="Sähköposti" value={profile.email} onPress={() => openEditModal('email')} />
                     <InfoItem label="Osoite" value={profile.address} onPress={() => openEditModal('address')} />
                     <InfoItem label="Puhelinnumero" value={profile.phone} onPress={() => openEditModal('phone')} />
                 </View>
 
                 <View style={styles.dangerZone}>
-                    <Text style={styles.dangerTitle}>Tilin hallinta</Text>
-                    <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={handleDeleteAccount}
-                        disabled={deleting}
-                    >
-                        {deleting ? (
-                            <ActivityIndicator color={COLORS.danger} />
-                        ) : (
-                            <>
-                                <Feather name="trash-2" size={18} color={COLORS.danger} />
-                                <Text style={styles.deleteButtonText}>Poista käyttäjätili</Text>
-                            </>
-                        )}
+                    <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+                        <Feather name="trash-2" size={18} color={COLORS.danger} />
+                        <Text style={styles.deleteButtonText}>Poista käyttäjätili</Text>
                     </TouchableOpacity>
-                    <Text style={styles.dangerNote}>
-                        Tilin poistaminen poistaa kaikki henkilötiedot ja historiatiedot sovelluksesta.
-                    </Text>
                 </View>
-
-                <View style={{ height: 40 }} />
             </ScrollView>
 
             <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalContainer}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Muokkaa tietoja</Text>
+                            <Text style={styles.modalTitle}>Muokkaa</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}><Feather name="x" size={24} color={COLORS.dark} /></TouchableOpacity>
                         </View>
+
                         <View style={styles.modalBody}>
-                            {editingField === 'name' ? (
-                                <View>
-                                    <Text style={styles.inputLabel}>Etunimi</Text>
-                                    <TextInput style={styles.input} value={tempFirstName} onChangeText={setTempFirstName} placeholder="Etunimi" />
-                                    <Text style={styles.inputLabel}>Sukunimi</Text>
-                                    <TextInput style={styles.input} value={tempLastName} onChangeText={setTempLastName} placeholder="Sukunimi" />
+                            {editingField === 'address' ? (
+                                <View style={{ height: 300, zIndex: 1000 }}>
+                                    <GooglePlacesAutocomplete
+                                        placeholder="Etsi osoitetta..."
+                                        onPress={(data) => setTempValue(data.description)}
+                                        query={{ key: 'YOUR_GOOGLE_API_KEY', language: 'fi', components: 'country:fi' }}
+                                        styles={{ textInput: styles.input, listView: { backgroundColor: 'white', position: 'absolute', top: 50, zIndex: 5000 } }}
+                                        enablePoweredByContainer={false}
+                                    />
                                 </View>
-                            ) : editingField === 'phone' ? (
-                                <View style={styles.phoneInputContainer}>
-                                    <TouchableOpacity onPress={() => setCountryPickerVisible(true)} style={styles.countryCodeButton}>
-                                        <CountryPicker
-                                            withFlag
-                                            onSelect={({ cca2 }) => setCountryCode(cca2)}
-                                            visible={countryPickerVisible}
-                                            onClose={() => setCountryPickerVisible(false)}
-                                            countryCode={countryCode}
-                                        />
-                                        <Text style={styles.countryCodeText}>+{CALLING_CODES[countryCode]}</Text>
-                                    </TouchableOpacity>
-                                    <TextInput style={[styles.input, styles.numberInput]} value={tempValue} onChangeText={setTempValue} keyboardType='phone-pad' />
+                            ) : editingField === 'name' ? (
+                                <View>
+                                    <TextInput style={styles.input} value={tempFirstName} onChangeText={setTempFirstName} placeholder="Etunimi" />
+                                    <TextInput style={[styles.input, { marginTop: 10 }]} value={tempLastName} onChangeText={setTempLastName} placeholder="Sukunimi" />
                                 </View>
                             ) : (
-                                <TextInput style={styles.input} value={tempValue} onChangeText={setTempValue} placeholder="Syötä uusi arvo" />
+                                <View>
+                                    {editingField === 'phone' ? (
+                                        <View style={styles.phoneInputContainer}>
+                                            <TouchableOpacity onPress={() => setCountryPickerVisible(true)} style={styles.countryCodeButton}>
+                                                <CountryPicker withFlag onSelect={({ cca2 }) => setCountryCode(cca2)} visible={countryPickerVisible} onClose={() => setCountryPickerVisible(false)} countryCode={countryCode} />
+                                                <Text style={styles.countryCodeText}>+{CALLING_CODES[countryCode]}</Text>
+                                            </TouchableOpacity>
+                                            <TextInput style={[styles.input, styles.numberInput]} value={tempValue} onChangeText={setTempValue} keyboardType='phone-pad' />
+                                        </View>
+                                    ) : (
+                                        <TextInput style={styles.input} value={tempValue} onChangeText={setTempValue} autoCapitalize="none" keyboardType={editingField === 'email' ? 'email-address' : 'default'} />
+                                    )}
+                                </View>
                             )}
                         </View>
+
                         <TouchableOpacity style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={handleSaveField} disabled={saving}>
                             {saving ? <ActivityIndicator color="white" /> : <Text style={styles.saveButtonText}>Tallenna</Text>}
                         </TouchableOpacity>
@@ -254,7 +250,7 @@ const InfoItem = ({ label, value, onPress }: any) => (
     <TouchableOpacity style={styles.infoItem} onPress={onPress}>
         <View style={styles.infoTextContainer}>
             <Text style={styles.infoLabel}>{label}</Text>
-            <Text style={styles.infoValue} numberOfLines={1}>{value || 'Ei määritelty'}</Text>
+            <Text style={styles.infoValue}>{value || 'Ei määritelty'}</Text>
         </View>
         <Feather name="chevron-right" size={20} color={COLORS.textGray} />
     </TouchableOpacity>
@@ -266,36 +262,35 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15, backgroundColor: COLORS.white },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.dark },
     content: { flex: 1, padding: 20 },
-    infoList: { backgroundColor: COLORS.white, borderRadius: 12, overflow: 'hidden', elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
-    infoItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: COLORS.gray },
-    infoTextContainer: { flex: 1, marginRight: 10 },
-    infoLabel: { fontSize: 16, fontWeight: '600', color: COLORS.dark, marginBottom: 4 },
-    infoValue: { fontSize: 14, color: COLORS.textGray },
-    dangerZone: { marginTop: 30, paddingHorizontal: 5 },
-    dangerTitle: { fontSize: 16, fontWeight: '700', color: COLORS.dark, marginBottom: 12 },
-    deleteButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.white,
-        padding: 15,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: COLORS.danger + '40'
-    },
-    deleteButtonText: { color: COLORS.danger, fontWeight: '700', fontSize: 16, marginLeft: 10 },
-    dangerNote: { fontSize: 13, color: COLORS.textGray, marginTop: 10, lineHeight: 18 },
+    infoList: { backgroundColor: COLORS.white, borderRadius: 16, overflow: 'hidden', elevation: 2, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 5 },
+    infoItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: COLORS.gray },
+    infoTextContainer: { flex: 1 },
+    infoLabel: { fontSize: 14, color: COLORS.textGray, marginBottom: 2 },
+    infoValue: { fontSize: 16, fontWeight: '600', color: COLORS.dark },
+    dangerZone: { marginTop: 30 },
+    deleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white, padding: 15, borderRadius: 12, borderWidth: 1, borderColor: COLORS.danger + '40' },
+    deleteButtonText: { color: COLORS.danger, fontWeight: '700', marginLeft: 10 },
     modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-    modalContent: { backgroundColor: COLORS.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, minHeight: 300 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.dark },
-    modalBody: { marginBottom: 20 },
-    inputLabel: { fontSize: 14, fontWeight: '600', color: COLORS.dark, marginBottom: 8, marginTop: 10 },
-    input: { backgroundColor: COLORS.gray, paddingHorizontal: 15, paddingVertical: 12, borderRadius: 8, fontSize: 16, color: COLORS.dark, borderWidth: 1, borderColor: COLORS.border },
-    phoneInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.gray, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
-    countryCodeButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 12, backgroundColor: COLORS.white, borderRightWidth: 1, borderColor: COLORS.border },
-    countryCodeText: { fontSize: 16, color: COLORS.dark, fontWeight: 'bold', marginLeft: 5 },
-    numberInput: { flex: 1, backgroundColor: 'transparent', borderWidth: 0 },
-    saveButton: { backgroundColor: COLORS.primary, paddingVertical: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
-    saveButtonDisabled: { opacity: 0.7 },
-    saveButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
+    modalContent: { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, minHeight: 400 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold' },
+    modalBody: { marginBottom: 20, minHeight: 100 },
+    input: { backgroundColor: COLORS.gray, padding: 16, borderRadius: 12, fontSize: 16, borderWidth: 1, borderColor: COLORS.border },
+    phoneInputContainer: { flexDirection: 'row', backgroundColor: COLORS.gray, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
+    countryCodeButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, backgroundColor: COLORS.white, borderRightWidth: 1, borderColor: COLORS.border },
+    countryCodeText: { fontWeight: 'bold', marginLeft: 5 },
+    numberInput: { flex: 1, padding: 16 },
+    saveButton: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 20 },
+    saveButtonDisabled: { opacity: 0.6 },
+    saveButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+    alertOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 30 },
+    alertBox: {
+        backgroundColor: 'white', borderRadius: 24, padding: 25, width: '100%', alignItems: 'center', elevation: 20,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20,
+    },
+    alertIconBg: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+    alertTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.dark, marginBottom: 10 },
+    alertMessage: { fontSize: 16, color: COLORS.textGray, textAlign: 'center', marginBottom: 25, lineHeight: 22 },
+    alertButton: { paddingVertical: 14, paddingHorizontal: 40, borderRadius: 12, width: '100%', alignItems: 'center' },
+    alertButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
 });
