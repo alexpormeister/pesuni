@@ -1,17 +1,18 @@
 import { Feather } from '@expo/vector-icons';
+import { useStripe } from '@stripe/stripe-react-native'; // 🔥 LISÄTTY
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler'; // 🔥 LISÄTTY
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { supabase } from '../../lib/supabase';
 
@@ -26,7 +27,7 @@ import ExtraInstructions from '../../components/checkout/ExtraInstructions';
 import OrderSummaryCard from '../../components/checkout/OrderSummaryCard';
 import PaymentSelection from '../../components/checkout/PaymentSelection';
 import PointsUsage from '../../components/checkout/PointsUsage';
-import SwipeButton from '../../components/checkout/SwipeButton'; // 🔥 LISÄTTY
+import SwipeButton from '../../components/checkout/SwipeButton';
 import TermsCheckbox from '../../components/checkout/TermsCheckbox';
 import TimeSlotPicker from '../../components/checkout/TimeSlotPicker';
 
@@ -46,6 +47,7 @@ const COLORS = {
 export default function CheckoutScreen() {
     const router = useRouter();
     const dispatch = useDispatch();
+    const { initPaymentSheet, presentPaymentSheet } = useStripe(); // 🔥 LISÄTTY
 
     const cartItems = useSelector(selectCartItems);
     const userProfile: UserProfile | null = useSelector(selectUserProfile) as (UserProfile | null);
@@ -61,7 +63,6 @@ export default function CheckoutScreen() {
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
-    const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
 
     const [pointsDiscount, setPointsDiscount] = useState(0);
     const [pointsToUse, setPointsToUse] = useState(0);
@@ -93,7 +94,6 @@ export default function CheckoutScreen() {
         }
 
         currentTotal -= pointsDiscount;
-
         return { subtotal: initialSubtotal, finalTotal: Math.max(0, currentTotal) };
     }, [cartItems, appliedCoupon, pointsDiscount]);
 
@@ -103,16 +103,77 @@ export default function CheckoutScreen() {
     }, [userProfile, cartItems]);
 
     const isStepTwoValid = useMemo(() => !!(pickupSlot?.slot || pickupSlot?.time), [pickupSlot]);
-    const isStepThreeValid = useMemo(() => termsAccepted && !!selectedPaymentMethodId, [termsAccepted, selectedPaymentMethodId]);
+    const isStepThreeValid = useMemo(() => termsAccepted, [termsAccepted]);
+
+    // 🔥 STRIPE MAKSU JA TILAUKSEN TALLENNUS 🔥
+    const processPaymentAndOrder = async () => {
+        setIsProcessing(true);
+        try {
+            // 1. Luodaan väliaikainen ID maksua varten
+            const tempOrderId = Math.random().toString(36).substring(7);
+
+            // 2. Kutsutaan Edge Functionia
+            const { data, error: funcError } = await supabase.functions.invoke('create-payment-sheet', {
+                body: { order_id: tempOrderId, amount: finalTotal }
+            });
+
+            if (funcError) {
+                console.error("DEBUG - Funktio virhe:", funcError);
+                // Haetaan tarkka virheviesti jos mahdollista
+                const errorMsg = funcError.message || "Tuntematon virhe";
+                const status = funcError.status || "ei statusta";
+
+                Alert.alert(
+                    "Yhteysvirhe",
+                    `Backend palautti virheen: ${errorMsg} (Koodi: ${status}). Varmista että olet kirjautunut sisään.`
+                );
+                throw new Error(`Maksuasetusten haku epäonnistui: ${errorMsg}`);
+            }
+
+            if (!data || !data.paymentIntent) {
+                console.error("DEBUG - Data puuttuu:", data);
+                Alert.alert("Virhe", "Backend ei palauttanut maksutietoja. Tarkista lokit.");
+                throw new Error("Maksutiedot puuttuvat");
+            }
+            // 3. Alustetaan Payment Sheet
+            const { error: initError } = await initPaymentSheet({
+                merchantDisplayName: "Pesuni Oy",
+                customerId: data.customer,
+                customerEphemeralKeySecret: data.ephemeralKey,
+                paymentIntentClientSecret: data.paymentIntent,
+                allowsDelayedPaymentMethods: true,
+                returnURL: 'pesuni://stripe-redirect',
+                applePay: { merchantCountryCode: 'FI' },
+                defaultBillingDetails: {
+                    name: userProfile?.first_name || 'Asiakas',
+                }
+            });
+
+            if (initError) throw initError;
+
+            // 4. Näytetään maksuikkuna
+            const { error: presentError } = await presentPaymentSheet();
+
+            if (presentError) {
+                if (presentError.code === 'Canceled') {
+                    setIsProcessing(false);
+                    return;
+                }
+                throw presentError;
+            }
+
+            // 5. Jos maksu onnistui, tallennetaan tilaus kantaan
+            await handlePlaceOrder('stripe_mobile_payment');
+
+        } catch (error: any) {
+            setIsProcessing(false);
+            Alert.alert("Virhe", error.message || "Maksun käsittely epäonnistui");
+        }
+    };
 
     const handlePlaceOrder = async (methodId: string) => {
         const pickupText = pickupSlot?.slot?.time || "";
         const deliveryText = deliverySlot?.slot?.time || pickupText;
-
-        if (!pickupText) {
-            Alert.alert("Virhe", "Valitse noutoaika.");
-            return;
-        }
 
         const formatTimeOnly = (text: string) => {
             const m = text.match(/\d{2}:\d{2}/);
@@ -139,8 +200,6 @@ export default function CheckoutScreen() {
         const pickupFull = createFullIso(pickupSlot.date, pickupText);
         const deliveryFull = createFullIso(deliverySlot?.date || pickupSlot.date, deliveryText);
 
-        setIsProcessing(true);
-
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user || !userProfile) throw new Error("Käyttäjää ei löydy");
@@ -164,6 +223,7 @@ export default function CheckoutScreen() {
                     pickup_slot: pickupFull,
                     delivery_slot: deliveryFull,
                     tracking_status: 'pending',
+                    payment_status: 'paid', // Merkitään maksetuksi
                     paid_at: new Date().toISOString(),
                     access_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
                     payment_method: methodId,
@@ -173,20 +233,19 @@ export default function CheckoutScreen() {
             if (orderError) throw orderError;
 
             if (pointsToUse > 0) {
-                const { error: pointsError } = await supabase.rpc('deduct_points', {
+                await supabase.rpc('deduct_points', {
                     user_id_param: user.id,
                     amount_to_deduct: pointsToUse
                 });
-                if (pointsError) console.error("Pisteiden vähennys epäonnistui", pointsError);
             }
 
             setIsProcessing(false);
             setIsSuccess(true);
-            (dispatch as any)(clearCart());
+            dispatch(clearCart());
 
         } catch (error: any) {
             console.error("Tilausvirhe:", error);
-            Alert.alert("Virhe", `Tilaus epäonnistui: ${error.message}`);
+            Alert.alert("Virhe", "Maksu vahvistettiin, mutta tilausta ei voitu tallentaa. Ota yhteys tukeen.");
             setIsProcessing(false);
         }
     };
@@ -199,9 +258,7 @@ export default function CheckoutScreen() {
 
         if (isValid && currentStep < MAX_STEPS) {
             setCurrentStep(currentStep + 1);
-        } else if (isValid && currentStep === MAX_STEPS) {
-            if (selectedPaymentMethodId) handlePlaceOrder(selectedPaymentMethodId);
-        } else {
+        } else if (!isValid) {
             Alert.alert("Puuttuvat tiedot", "Täytä kaikki vaaditut kentät edetäksesi.");
         }
     };
@@ -210,7 +267,7 @@ export default function CheckoutScreen() {
         return (
             <View style={styles.centeredContainer}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={styles.statusText}>Käsitellään tilausta...</Text>
+                <Text style={styles.statusText}>Käsitellään maksua...</Text>
             </View>
         );
     }
@@ -220,9 +277,9 @@ export default function CheckoutScreen() {
             <View style={styles.centeredContainer}>
                 <Feather name="check-circle" size={80} color={COLORS.primary} />
                 <Text style={styles.successTitle}>Kiitos tilauksesta!</Text>
-                <Text style={styles.successSubtitle}>Tilaus on vastaanotettu. Siirrytään seurantaan...</Text>
+                <Text style={styles.successSubtitle}>Tilaus on vastaanotettu ja maksettu.</Text>
                 <TouchableOpacity style={styles.manualButton} onPress={() => router.replace('/washes')}>
-                    <Text style={styles.manualButtonText}>Siirry nyt</Text>
+                    <Text style={styles.manualButtonText}>Siirry seurantaan</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -258,7 +315,7 @@ export default function CheckoutScreen() {
 
                     {currentStep === 3 && (
                         <View style={styles.stepContainer}>
-                            <Text style={styles.stepTitle}>Vaihe 3: Maksutapa & Alennukset</Text>
+                            <Text style={styles.stepTitle}>Vaihe 3: Maksun yhteenveto</Text>
                             <TermsCheckbox onToggle={setTermsAccepted} isAccepted={termsAccepted} />
 
                             <PointsUsage
@@ -273,7 +330,6 @@ export default function CheckoutScreen() {
                             <PaymentSelection
                                 originalTotal={subtotal}
                                 finalTotal={finalTotal}
-                                onSelectMethod={setSelectedPaymentMethodId}
                             />
                         </View>
                     )}
@@ -296,11 +352,7 @@ export default function CheckoutScreen() {
                     ) : (
                         <SwipeButton
                             title={`Pyyhkäise ja Maksa ${finalTotal.toFixed(2)} €`}
-                            onSwipeSuccess={() => {
-                                if (selectedPaymentMethodId) {
-                                    handlePlaceOrder(selectedPaymentMethodId);
-                                }
-                            }}
+                            onSwipeSuccess={processPaymentAndOrder} // 🔥 KUTSUU STRIPE-PROSESSIA
                             disabled={!isStepThreeValid}
                         />
                     )}

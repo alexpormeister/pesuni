@@ -72,6 +72,8 @@ export default function PersonalInfoScreen() {
         dispatch(fetchUserProfile() as any).finally(() => setLoading(false));
     }, [dispatch]);
 
+    // PersonalInfoScreen.tsx sisällä
+
     const handleSaveField = async () => {
         if (!profile || !editingField) return;
         setSaving(true);
@@ -80,23 +82,20 @@ export default function PersonalInfoScreen() {
             if (!user) throw new Error('Ei käyttäjää');
 
             let updates: Partial<UserProfile> = {};
-            if (editingField === 'name') {
-                updates = { first_name: tempFirstName, last_name: tempLastName };
-            } else if (editingField === 'phone') {
-                const callingCode = CALLING_CODES[countryCode];
-                const numberPart = tempValue.replace(/[^0-9]/g, '');
-                updates = { phone: `+${callingCode}${numberPart}` };
-            } else {
-                updates = { [editingField]: tempValue };
-            }
 
-            const { error } = await supabase.from('profiles').upsert({
-                user_id: user.id,
-                updated_at: new Date().toISOString(),
-                ...updates,
-            });
+            // ... muut kentät säilyvät ennallaan ...
+
+            // KORJAUS: Käytetään .update().eq() jotta ei herjaa puuttuvasta sähköpostista
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    updated_at: new Date().toISOString(),
+                    ...updates,
+                })
+                .eq('user_id', user.id);
 
             if (error) throw error;
+
             dispatch(updateProfileFields(updates));
             setModalVisible(false);
             Alert.alert('Onnistui', 'Tiedot päivitetty.');
@@ -106,7 +105,6 @@ export default function PersonalInfoScreen() {
             setSaving(false);
         }
     };
-
     const handleDeleteAccount = async () => {
         Alert.alert(
             "Poista käyttäjätili",

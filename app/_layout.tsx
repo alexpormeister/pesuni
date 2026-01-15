@@ -1,12 +1,16 @@
-// Tiedosto: app/_layout.tsx
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { Session } from '@supabase/supabase-js';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { Provider } from 'react-redux';
 import { supabase } from '../lib/supabase';
 import { store } from '../redux/store';
 
-function useAuthGuard() {
+const STRIPE_PUBLISHABLE_KEY = "pk_test_51Ru0JGRwjWBeEBIGYcLA5aY63XU9Lt2GeB9y2lG4Bq3g2LVAbmp0To6JGkVTzi0V7OwuNsStpYkqUyIIFp33zGll00rU8YWjX0";
+
+// Sisäinen komponentti, joka hoitaa navigoinnin ja suojauksen
+function RootLayoutNav() {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
@@ -39,48 +43,52 @@ function useAuthGuard() {
             // Jos istunto löytyy ja ollaan auth-sivulla -> ohjaa etusivulle
             router.replace('/');
         }
-
     }, [session, loading, segments, router]);
 
-    return { loading };
-}
-
-export default function RootLayout() {
-    const { loading } = useAuthGuard();
-
     if (loading) {
-        // Voit vaihtaa tämän myös <ActivityIndicator /> -komponenttiin
-        return null;
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FD' }}>
+                <ActivityIndicator size="large" color="#00c2ff" />
+            </View>
+        );
     }
 
     return (
-        <Provider store={store}>
-            {/* Stack mahdollistaa sivujen väliset siirtymäanimaatiot 
-              ja "swipe left to go back" -eleen iOS:llä.
-            */}
+        <StripeProvider
+            publishableKey={STRIPE_PUBLISHABLE_KEY}
+            merchantIdentifier="merchant.com.pesuni"
+            urlScheme="pesuni" // Päivitetty vastaamaan schemeäsi
+        >
             <Stack
                 screenOptions={{
-                    // headerShown: false piilottaa natiivin yläpalkin,
-                    // mutta säilyttää silti pyyhkäisyominaisuuden.
                     headerShown: false,
                     gestureEnabled: true,
-                    // Tämä sallii pyyhkäisyn mistä tahansa kohtaa ruutua, ei vain reunasta:
                     fullScreenGestureEnabled: true,
-                    // Määritetään animaatio tyylikkääksi (valinnainen)
                     animation: 'slide_from_right',
                 }}
             >
-                {/* Määritellään tässä tarvittaessa yksittäiset näkymät.
-                  Esimerkiksi login-sivulla pyyhkäisy takaisin kannattaa estää.
+                {/* KORJAUS: Määritellään päätason kansiot. 
+                  Expo Router etsii näiden sisältä niiden omat _layout.tsx tiedostot.
                 */}
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen
-                    name="auth/login"
+                    name="auth"
                     options={{
                         headerShown: false,
-                        gestureEnabled: false // Ei voi pyyhkäistä takaisin kirjautumissivulta
+                        gestureEnabled: false
                     }}
                 />
+                <Stack.Screen name="general" options={{ headerShown: false }} />
             </Stack>
+        </StripeProvider>
+    );
+}
+
+// Pääkomponentti, joka tarjoaa Redux-storen koko sovellukselle
+export default function RootLayout() {
+    return (
+        <Provider store={store}>
+            <RootLayoutNav />
         </Provider>
     );
 }

@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import SettingsList from "../../components/profile/SettingsList";
 import StatsBar from "../../components/profile/StatsBar";

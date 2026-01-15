@@ -9,24 +9,23 @@ export default function TabLayout() {
   // Käsitellään välilehden vaihto
   const handleTabChange = (tabId: string) => {
     if (tabId === 'home') {
-      router.push({ pathname: '/' });
+      router.push('/');
     } else if (tabId === 'orders') {
-      // Ohjataan aina washes-sivulle, kun painetaan tilaus-ikonia
-      router.push({ pathname: '/washes' });
+      router.push('/washes');
     } else if (tabId === 'profile') {
-      router.push({ pathname: '/profile' });
+      router.push('/profile');
     }
   };
 
   // Määritetään mikä ikoni on aktiivisena navigaatiopalkissa
   const getActiveTab = () => {
-    if (pathname === '/washes') {
+    // Lisätty tarkistus myös uudelle orders-polulle
+    if (pathname === '/washes' || pathname === '/general/orders') {
       return 'orders';
     }
     if (pathname === '/profile') {
       return 'profile';
     }
-    // Oletuksena koti
     return 'home';
   };
 
@@ -39,10 +38,10 @@ export default function TabLayout() {
         />
       )}
     >
+      {/* Varmista että name vastaa tiedostonimeä (esim. washes.tsx) */}
       <Tabs.Screen name="index" options={{ headerShown: false }} />
       <Tabs.Screen name="washes" options={{ headerShown: false }} />
       <Tabs.Screen name="profile" options={{ headerShown: false }} />
-      {/* Poistettu Tabs.Screen name="orders" */}
     </Tabs>
   );
 }
