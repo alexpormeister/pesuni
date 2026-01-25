@@ -112,6 +112,7 @@ const FloatingCartBubble: React.FC<FloatingCartBubbleProps> = ({ onPress }) => {
 const COLORS = {
     white: '#FFFFFF',
     primary: '#00c2ff',
+    textDark: '#222222',
 };
 
 const styles = StyleSheet.create({
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
         borderColor: COLORS.primary,
     },
     itemCountText: {
-        color: COLORS.primary,
+        color: COLORS.textDark,
         fontSize: 12,
         fontWeight: 'bold',
     },

@@ -200,6 +200,9 @@ export default function CheckoutScreen() {
         const pickupFull = createFullIso(pickupSlot.date, pickupText);
         const deliveryFull = createFullIso(deliverySlot?.date || pickupSlot.date, deliveryText);
 
+        // --- KORJAUS: MUODOSTETAAN LISTA KAIKISTA TUOTTEISTA ---
+        const allServicesNames = cartItems.map(item => item.name).join(', ');
+
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user || !userProfile) throw new Error("Käyttäjää ei löydy");
@@ -215,7 +218,7 @@ export default function CheckoutScreen() {
                     price: subtotal,
                     final_price: finalTotal,
                     service_type: 'multiple',
-                    service_name: cartItems[0]?.name || 'Pesupalvelu',
+                    service_name: allServicesNames || 'Pesupalvelu', // Nyt tallentaa kaikki nimet
                     pickup_date: pickupDateStr,
                     return_date: returnDateStr,
                     pickup_time: pickupTimeOnly,
