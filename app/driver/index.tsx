@@ -191,7 +191,11 @@ export default function DriverDrivesScreen() {
     const fetchDrives = useCallback(async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const currentUserId = session?.user?.id;
+            let currentUserId = session?.user?.id;
+            if (!currentUserId) {
+                const { data: { user } } = await supabase.auth.getUser();
+                currentUserId = user?.id;
+            }
 
             if (!currentUserId) {
                 setDrives([]);

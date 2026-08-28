@@ -438,7 +438,20 @@ export default function DriverSearchScreen() {
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             setSelectedGig(null);
-            Alert.alert('Keikka vastaanotettu! 🎉', 'Keikka on nyt sinulla ja löytyy Omat ajot -sivulta.');
+            Alert.alert(
+                'Keikka vastaanotettu! 🎉',
+                'Keikka on nyt sinulla ja löytyy Omat ajot -sivulta.',
+                [
+                    {
+                        text: 'Siirry Omat ajot -sivulle',
+                        onPress: () => router.navigate('/driver' as any),
+                    },
+                    {
+                        text: 'Jatka etsimistä',
+                        style: 'cancel',
+                    },
+                ]
+            );
             await fetchGigs();
         } catch (err: any) {
             console.error('[CLAIM_GIG] ERROR:', err);
