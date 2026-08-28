@@ -1,4 +1,5 @@
 import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { Session } from '@supabase/supabase-js';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -182,8 +183,10 @@ function RootLayoutNav() {
 // Pääkomponentti, joka tarjoaa Redux-storen koko sovellukselle
 export default function RootLayout() {
     return (
-        <Provider store={store}>
-            <RootLayoutNav />
-        </Provider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <Provider store={store}>
+                <RootLayoutNav />
+            </Provider>
+        </GestureHandlerRootView>
     );
 }
