@@ -8,11 +8,10 @@ import { selectUserProfile } from '../../redux/profileSlice';
 
 const COLORS = {
     dark: '#1A1B32',
-    primary: '#00c2ff',
+    primary: '#00C2FF',
     white: '#FFFFFF',
-    lightGray: '#F8F9FD',
-    textGray: '#6B7280',
-    border: '#F1F5F9',
+    textGray: '#64748B',
+    cardBorder: '#F1F5F9',
 };
 
 interface LocationBarProps {
@@ -36,58 +35,74 @@ const LocationBar: React.FC<LocationBarProps> = ({ onCartPress }) => {
     };
 
     return (
-        <View style={styles.wrapper}>
-            <View style={styles.barContainer}>
-                {/* OSOITE-OSIO */}
+        <View style={styles.floatingContainer}>
+            <View style={styles.mainCard}>
+                {/* 📍 OSOITEOSIO 📍 */}
                 <TouchableOpacity
                     onPress={toggleDropdown}
-                    activeOpacity={0.7}
-                    style={styles.locationButton}
+                    activeOpacity={0.75}
+                    style={styles.locationSection}
                 >
-                    <View style={styles.iconCircle}>
-                        <FontAwesome5 name="map-marker-alt" size={14} color={COLORS.primary} />
+                    <View style={styles.iconBox}>
+                        <FontAwesome5 name="map-marker-alt" size={15} color={COLORS.primary} />
                     </View>
 
-                    <View style={styles.textStack}>
-                        <Text style={styles.label}>Toimitusosoite</Text>
+                    <View style={styles.textContainer}>
+                        <View style={styles.labelRow}>
+                            <Text style={styles.labelText}>Toimitusosoite</Text>
+                            <View style={styles.activeDot} />
+                        </View>
                         <View style={styles.addressRow}>
-                            <Text style={styles.locationText} numberOfLines={1}>
+                            <Text style={styles.addressText} numberOfLines={1}>
                                 {displayAddress}
                             </Text>
                             <Feather
                                 name={isDropdownVisible ? "chevron-up" : "chevron-down"}
                                 size={14}
                                 color={COLORS.textGray}
+                                style={{ marginLeft: 4 }}
                             />
                         </View>
                     </View>
                 </TouchableOpacity>
 
-                {/* OSTOSKORI */}
-                <TouchableOpacity onPress={onCartPress} style={styles.cartButton} activeOpacity={0.8}>
-                    <View style={styles.cartIconWrapper}>
-                        <Feather name="shopping-bag" size={22} color={COLORS.dark} />
-                        {cartCount > 0 && (
-                            <View style={styles.cartBadge}>
-                                <Text style={styles.cartBadgeText}>{cartCount}</Text>
-                            </View>
-                        )}
-                    </View>
+                {/* 🛒 OSTOSKORIPAINIKE 🛒 */}
+                <TouchableOpacity
+                    onPress={onCartPress}
+                    style={[styles.cartButton, cartCount > 0 && styles.activeCartButton]}
+                    activeOpacity={0.8}
+                >
+                    <Feather
+                        name="shopping-bag"
+                        size={20}
+                        color={cartCount > 0 ? '#00C2FF' : COLORS.dark}
+                    />
+                    {cartCount > 0 && (
+                        <View style={styles.cartBadge}>
+                            <Text style={styles.cartBadgeText}>{cartCount}</Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
             </View>
 
-            {/* DROPDOWN - MUUTA OSOITE */}
+            {/* 🔽 DROPDOWN - OSOITTEEN MUOKKAUSPIKAVALINTA 🔽 */}
             {isDropdownVisible && (
-                <View style={styles.dropdownContainer}>
+                <View style={styles.dropdownCard}>
                     <TouchableOpacity
-                        style={styles.dropdownButton}
+                        style={styles.dropdownActionRow}
                         onPress={handleEditAddress}
+                        activeOpacity={0.7}
                     >
                         <View style={styles.dropdownLeft}>
-                            <Feather name="edit-2" size={16} color={COLORS.primary} />
-                            <Text style={styles.dropdownText}>Muuta osoitetta</Text>
+                            <View style={styles.editIconCircle}>
+                                <Feather name="edit-2" size={14} color="#0284C7" />
+                            </View>
+                            <View>
+                                <Text style={styles.dropdownTitle}>Vaihda tai muokkaa osoitetta</Text>
+                                <Text style={styles.dropdownSubtitle}>Päivitä koti- tai nouto-osoite profiilista</Text>
+                            </View>
                         </View>
-                        <Feather name="arrow-right" size={16} color={COLORS.textGray} />
+                        <Feather name="chevron-right" size={16} color="#CBD5E1" />
                     </TouchableOpacity>
                 </View>
             )}
@@ -95,114 +110,153 @@ const LocationBar: React.FC<LocationBarProps> = ({ onCartPress }) => {
     );
 };
 
-export default LocationBar;
-
 const styles = StyleSheet.create({
-    wrapper: {
-        backgroundColor: COLORS.white,
-        zIndex: 100,
-        // 🔥 TÄMÄ VETÄÄ BOKSIA YLÖSPÄIN (Säädä tarvittaessa enemmän)
-        marginTop: -25,
-        borderBottomEndRadius: 20,
-        // Hienovarainen mutta syvä varjo
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
-        elevation: 10,
+    floatingContainer: {
+        marginHorizontal: 16,
+        marginTop: -22,
+        zIndex: 999,
     },
-    barContainer: {
+    mainCard: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
+        justifyContent: 'space-between',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        paddingHorizontal: 14,
         paddingVertical: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(226, 232, 240, 0.8)',
+        shadowColor: '#00C2FF',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 14,
+        elevation: 6,
     },
-    locationButton: {
+    locationSection: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
-    },
-    iconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#F0FBFF',
-        justifyContent: 'center',
-        alignItems: 'center',
         marginRight: 10,
     },
-    textStack: {
+    iconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        backgroundColor: '#F0F9FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    textContainer: {
         flex: 1,
     },
-    label: {
-        fontSize: 10,
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 2,
+    },
+    labelText: {
+        fontSize: 11,
         color: COLORS.textGray,
         fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginBottom: 1,
+        letterSpacing: 0.6,
+        marginRight: 6,
+    },
+    activeDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#10B981',
     },
     addressRow: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    locationText: {
+    addressText: {
         fontSize: 15,
         fontWeight: '800',
         color: COLORS.dark,
-        marginRight: 6,
+        flexShrink: 1,
     },
     cartButton: {
-        marginLeft: 30,
-    },
-    cartIconWrapper: {
-        width: 46,
-        height: 46,
-        borderRadius: 14,
-        backgroundColor: '#F3F4F6',
+        width: 44,
+        height: 44,
+        borderRadius: 15,
+        backgroundColor: '#F8FAFC',
         justifyContent: 'center',
         alignItems: 'center',
+        position: 'relative',
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    activeCartButton: {
+        backgroundColor: '#F0F9FF',
+        borderColor: '#BAE6FD',
     },
     cartBadge: {
         position: 'absolute',
         top: -4,
         right: -4,
-        backgroundColor: COLORS.primary,
+        backgroundColor: '#FF3B30',
         borderRadius: 10,
         minWidth: 20,
         height: 20,
+        paddingHorizontal: 4,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: COLORS.white,
+        borderColor: '#FFFFFF',
     },
     cartBadgeText: {
-        color: COLORS.white,
+        color: '#FFFFFF',
         fontSize: 10,
-        fontWeight: 'bold',
+        fontWeight: '900',
     },
-    dropdownContainer: {
-        paddingHorizontal: 20,
-        paddingBottom: 15,
-        paddingTop: 5,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
+    dropdownCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        marginTop: 8,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 4,
     },
-    dropdownButton: {
+    dropdownActionRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 10,
+        justifyContent: 'space-between',
+        paddingVertical: 6,
+        paddingHorizontal: 6,
     },
     dropdownLeft: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
-    dropdownText: {
+    editIconCircle: {
+        width: 34,
+        height: 34,
+        borderRadius: 12,
+        backgroundColor: '#E0F2FE',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    dropdownTitle: {
         fontSize: 14,
-        fontWeight: '700',
+        fontWeight: '800',
         color: COLORS.dark,
-        marginLeft: 10,
+    },
+    dropdownSubtitle: {
+        fontSize: 12,
+        color: COLORS.textGray,
+        marginTop: 1,
     },
 });
+
+export default LocationBar;

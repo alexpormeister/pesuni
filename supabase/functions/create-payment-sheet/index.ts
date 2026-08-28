@@ -86,7 +86,7 @@ serve(async (req) => {
       .from("orders")
       .update({
         stripe_session_id: paymentIntent.id,
-        payment_method: 'stripe_mobile_sheet',
+        payment_method: 'stripe',
         payment_status: 'pending',
         payment_amount: amount
       })

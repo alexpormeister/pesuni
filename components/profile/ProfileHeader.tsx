@@ -1,4 +1,5 @@
-import { FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
@@ -9,8 +10,9 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 
 const { width } = Dimensions.get('window');
@@ -33,43 +35,38 @@ interface ProfileHeaderProps {
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onLogoutPress }) => {
+    const insets = useSafeAreaInsets();
     const [firstName, setFirstName] = useState<string | null>(null);
     const [lastName, setLastName] = useState<string | null>(null);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
 
+    // Lasketaan dynaaminen turva-alue niin, että otsikko ja napit eivät koskaan mene piiloon
+    const topPadding = Math.max(insets.top + 12, 50);
+
     const fetchProfile = useCallback(async () => {
         try {
             setLoading(true);
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user;
+            if (!user) {
+                setFirstName(null);
+                setLastName(null);
+                setAvatarUrl(null);
+                setLoading(false);
+                return;
+            }
 
             const { data, error } = await supabase
                 .from('profiles')
                 .select('first_name, last_name, avatar_url')
                 .eq('user_id', user.id)
-                .single();
-
-            if (error) {
-                console.warn('Profiilin haku epäonnistui, haetaan perustiedot:', error.message);
-                const { data: basicData } = await supabase
-                    .from('profiles')
-                    .select('first_name, last_name')
-                    .eq('user_id', user.id)
-                    .single();
-
-                if (basicData) {
-                    setFirstName(basicData.first_name);
-                    setLastName(basicData.last_name);
-                }
-                return;
-            }
+                .maybeSingle();
 
             if (data) {
                 setFirstName(data.first_name);
                 setLastName(data.last_name);
-                // Jos kanta on tyhjä, avatarUrl jää nulliksi ja renderöinti käyttää FALLBACKia
                 setAvatarUrl(data.avatar_url);
             }
         } catch (err) {
@@ -85,7 +82,8 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onLogoutPress }) => {
 
     const updateAvatar = async (url: string) => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user;
             if (!user) return;
 
             const { error } = await supabase
@@ -106,7 +104,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onLogoutPress }) => {
     const handleLogoutPress = () => {
         Alert.alert(
             "Vahvista uloskirjautuminen",
-            "",
+            "Haluatko varmasti kirjautua ulos tililtäsi?",
             [
                 { text: "Peruuta", style: "cancel" },
                 { text: "Kirjaudu ulos", onPress: onLogoutPress, style: "destructive" }
@@ -114,33 +112,58 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onLogoutPress }) => {
         );
     };
 
-    // Jos avatarUrl on null/undefined, käytetään AVATAR_OPTIONS[0]
     const imageSource = { uri: avatarUrl || FALLBACK_AVATAR };
+    const fullName = firstName && lastName ? `${firstName} ${lastName}` : 'Pesuni Käyttäjä';
 
     return (
-        <View style={styles.outerContainer}>
+        <LinearGradient
+            colors={['#5CD1FF', '#00C2FF', '#0099FF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.headerGradient, { paddingTop: topPadding }]}
+        >
+            {/* 🌊 KORISTEELLISET AALTO- JA VIRTAUSVIIVAT 🌊 */}
+            <View style={styles.lineContainer} pointerEvents="none">
+                <View style={styles.arcOuter} />
+                <View style={styles.arcMiddle} />
+                <View style={styles.diagonalLine1} />
+            </View>
+
+            {/* YLÄPALKKI: OTSIKKO JA ULOSKIRJAUTUMINEN */}
             <View style={styles.topBar}>
-                <Text style={styles.profileText}>Profiili</Text>
-                <TouchableOpacity style={styles.logoutIconContainer} onPress={handleLogoutPress}>
-                    <FontAwesome5 name="sign-out-alt" size={22} color="#E85D5D" />
+                <Text style={styles.headerTitle}>Oma Profiili</Text>
+                <TouchableOpacity
+                    style={styles.logoutButton}
+                    activeOpacity={0.8}
+                    onPress={handleLogoutPress}
+                >
+                    <Feather name="log-out" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.logoutText}>Kirjaudu ulos</Text>
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.card}>
-                <View style={styles.profileImageWrapper}>
-                    <Image source={imageSource} style={styles.profileImage} />
+            {/* KESKELLÄ: AVATAR JA KÄYTTÄJÄN TIEDOT */}
+            <View style={styles.profileSection}>
+                <View style={styles.avatarWrapper}>
+                    <Image source={imageSource} style={styles.avatarImage} />
                     <TouchableOpacity
-                        style={styles.editIconContainer}
+                        style={styles.editBadge}
+                        activeOpacity={0.85}
                         onPress={() => setModalVisible(true)}
                     >
-                        <FontAwesome5 name="pencil-alt" size={16} color="#fff" />
+                        <FontAwesome5 name="pencil-alt" size={13} color="#FFFFFF" />
                     </TouchableOpacity>
                 </View>
-                <Text style={styles.nameText}>
-                    {loading ? 'Ladataan...' : (firstName && lastName ? `${firstName} ${lastName}` : 'Käyttäjä')}
-                </Text>
+
+                <Text style={styles.nameText}>{loading ? 'Ladataan...' : fullName}</Text>
+
+                <View style={styles.memberBadge}>
+                    <Feather name="check-circle" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                    <Text style={styles.memberBadgeText}>Pesuni Asiakas</Text>
+                </View>
             </View>
 
+            {/* AVATAR-VALINTAMODAALI */}
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -150,9 +173,9 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onLogoutPress }) => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Valitse profiilikuva</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <Ionicons name="close-circle" size={32} color="#DDD" />
+                            <Text style={styles.modalTitle}>Valitse maskottiprofiili</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)} style={{ padding: 4 }}>
+                                <Ionicons name="close" size={24} color="#64748B" />
                             </TouchableOpacity>
                         </View>
 
@@ -162,153 +185,235 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onLogoutPress }) => {
                             showsHorizontalScrollIndicator={false}
                             keyExtractor={(item) => item.id}
                             contentContainerStyle={styles.avatarList}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[
-                                        styles.avatarOptionWrapper,
-                                        (avatarUrl || FALLBACK_AVATAR) === item.url && styles.selectedAvatar
-                                    ]}
-                                    onPress={() => updateAvatar(item.url)}
-                                >
-                                    <Image source={{ uri: item.url }} style={styles.avatarOptionImage} />
-                                    {(avatarUrl || FALLBACK_AVATAR) === item.url && (
-                                        <View style={styles.checkBadge}>
-                                            <Ionicons name="checkmark" size={12} color="#fff" />
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            )}
+                            renderItem={({ item }) => {
+                                const isSelected = (avatarUrl || FALLBACK_AVATAR) === item.url;
+                                return (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.avatarOptionWrapper,
+                                            isSelected && styles.selectedAvatar
+                                        ]}
+                                        onPress={() => updateAvatar(item.url)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Image source={{ uri: item.url }} style={styles.avatarOptionImage} />
+                                        {isSelected && (
+                                            <View style={styles.checkBadge}>
+                                                <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            }}
                         />
                     </View>
                 </View>
             </Modal>
-        </View>
+        </LinearGradient>
     );
 };
 
 const styles = StyleSheet.create({
-    outerContainer: {
-        alignItems: 'center',
-        backgroundColor: '#F7F7F7',
-        width: '100%',
-        paddingBottom: 20,
+    headerGradient: {
+        paddingBottom: 30,
+        paddingHorizontal: 20,
+        borderBottomLeftRadius: 36,
+        borderBottomRightRadius: 36,
+        position: 'relative',
+        overflow: 'hidden',
+        shadowColor: '#00C2FF',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    lineContainer: {
+        ...StyleSheet.absoluteFillObject,
+        overflow: 'hidden',
+    },
+    arcOuter: {
+        position: 'absolute',
+        top: -60,
+        right: -40,
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    arcMiddle: {
+        position: 'absolute',
+        top: -20,
+        right: 0,
+        width: 200,
+        height: 200,
+        borderRadius: 100,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+    },
+    diagonalLine1: {
+        position: 'absolute',
+        bottom: 20,
+        left: -30,
+        width: 260,
+        height: 1.5,
+        backgroundColor: 'rgba(255, 255, 255, 0.18)',
+        transform: [{ rotate: '-22deg' }],
     },
     topBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        width: '90%',
-        paddingTop: 20,
+        marginBottom: 16,
     },
-    profileText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#000',
+    headerTitle: {
+        fontSize: 22,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 0.2,
+        textShadowColor: 'rgba(0, 40, 95, 0.35)',
+        textShadowOffset: { width: 0, height: 1.5 },
+        textShadowRadius: 3,
     },
-    logoutIconContainer: {
-        padding: 5,
-    },
-    card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 15,
-        width: '90%',
-        minHeight: 120,
-        marginTop: 70,
-        paddingHorizontal: 20,
+    logoutButton: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'flex-end',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    profileImageWrapper: {
-        position: 'absolute',
-        top: -60,
-        alignItems: 'center',
-    },
-    profileImage: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        borderWidth: 4,
-        borderColor: '#F7F7F7',
-        backgroundColor: '#DDD',
-    },
-    editIconContainer: {
-        position: 'absolute',
-        bottom: 5,
-        right: 5,
-        backgroundColor: '#00c2ff',
+        backgroundColor: 'rgba(255, 255, 255, 0.22)',
+        paddingVertical: 7,
+        paddingHorizontal: 13,
         borderRadius: 20,
-        width: 38,
-        height: 38,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.35)',
+    },
+    logoutText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    profileSection: {
+        alignItems: 'center',
+        marginTop: 6,
+    },
+    avatarWrapper: {
+        position: 'relative',
+        marginBottom: 12,
+    },
+    avatarImage: {
+        width: 104,
+        height: 104,
+        borderRadius: 52,
+        borderWidth: 4,
+        borderColor: '#FFFFFF',
+        backgroundColor: '#E0F7FF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+    },
+    editBadge: {
+        position: 'absolute',
+        bottom: 2,
+        right: 2,
+        backgroundColor: '#00C2FF',
+        borderRadius: 16,
+        width: 32,
+        height: 32,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 3,
-        borderColor: '#FFF',
+        borderColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
     },
     nameText: {
         fontSize: 22,
-        fontWeight: 'bold',
-        color: '#000',
-        marginBottom: 15,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        marginBottom: 6,
+        textAlign: 'center',
+        textShadowColor: 'rgba(0, 40, 95, 0.35)',
+        textShadowOffset: { width: 0, height: 1.5 },
+        textShadowRadius: 4,
+    },
+    memberBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        paddingVertical: 4,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.4)',
+    },
+    memberBadgeText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        letterSpacing: 0.3,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     modalContent: {
-        backgroundColor: '#FFF',
-        borderRadius: 25,
-        padding: 20,
-        width: width * 0.9,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 28,
+        padding: 24,
+        width: width * 0.88,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
+        elevation: 15,
     },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 16,
     },
     modalTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '800',
+        color: '#1A1B32',
     },
     avatarList: {
         paddingVertical: 10,
+        gap: 12,
     },
     avatarOptionWrapper: {
-        marginRight: 15,
         borderRadius: 40,
-        padding: 2,
-        borderWidth: 2,
+        padding: 3,
+        borderWidth: 2.5,
         borderColor: 'transparent',
     },
     selectedAvatar: {
-        borderColor: '#00c2ff',
+        borderColor: '#00C2FF',
     },
     avatarOptionImage: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        backgroundColor: '#EEE',
+        width: 68,
+        height: 68,
+        borderRadius: 34,
+        backgroundColor: '#F1F5F9',
     },
     checkBadge: {
         position: 'absolute',
-        bottom: 0,
-        right: 0,
-        backgroundColor: '#00c2ff',
+        bottom: 2,
+        right: 2,
+        backgroundColor: '#00C2FF',
         borderRadius: 10,
         width: 20,
         height: 20,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: '#FFF',
-    }
+        borderColor: '#FFFFFF',
+    },
 });
 
 export default ProfileHeader;

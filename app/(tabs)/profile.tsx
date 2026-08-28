@@ -1,10 +1,21 @@
-import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import SettingsList from "../../components/profile/SettingsList";
 import StatsBar from "../../components/profile/StatsBar";
+import { performLogout } from '../../lib/authHelper';
 import { supabase } from '../../lib/supabase';
 
 const ProfileScreen = () => {
@@ -16,19 +27,24 @@ const ProfileScreen = () => {
 
     const fetchProfileStats = useCallback(async () => {
         try {
-            // Poistetaan setIsLoading(true), jotta sivu ei välky joka päivityksellä, 
-            // mutta pidetään alkutila latauksessa.
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user;
+            if (!user) {
+                setPoints(0);
+                setOrderCount(0);
+                setUnreadCount(0);
+                setIsLoading(false);
+                return;
+            }
 
             // 1. Hae pisteet profiilista
             const { data: profileData } = await supabase
                 .from('profiles')
                 .select('points_balance')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
-            if (profileData) setPoints(profileData.points_balance || 0);
+            setPoints(profileData?.points_balance || 0);
 
             // 2. Laske tilausten määrä
             const { count: countData } = await supabase
@@ -38,14 +54,15 @@ const ProfileScreen = () => {
 
             setOrderCount(countData || 0);
 
-            // 3. Hae lukemattomat viestit
-            const { count: chatCount } = await supabase
+            // 3. Hae lukemattomat viestit (vain AVOIMISTA keskusteluista)
+            const { data: openUnreadChats } = await supabase
                 .from('support_chats')
-                .select('*', { count: 'exact', head: true })
+                .select('id, is_read, status')
                 .eq('user_id', user.id)
+                .neq('status', 'closed')
                 .eq('is_read', false);
 
-            setUnreadCount(chatCount || 0);
+            setUnreadCount(openUnreadChats?.length || 0);
 
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -53,6 +70,13 @@ const ProfileScreen = () => {
             setIsLoading(false);
         }
     }, []);
+
+    // Päivitetään tiedot aina kun profiilisivu aktivoituu
+    useFocusEffect(
+        useCallback(() => {
+            fetchProfileStats();
+        }, [fetchProfileStats])
+    );
 
     useEffect(() => {
         fetchProfileStats();
@@ -70,68 +94,201 @@ const ProfileScreen = () => {
 
     const handleEditPress = () => router.push('/general/personal-data');
 
-    const handleLogoutPress = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) Alert.alert("Virhe", error.message);
+    const handleLogoutPress = () => {
+        Alert.alert(
+            'Kirjaudu ulos',
+            'Haluatko varmasti kirjautua ulos sovelluksesta?',
+            [
+                { text: 'Peruuta', style: 'cancel' },
+                {
+                    text: 'Kirjaudu ulos',
+                    style: 'destructive',
+                    onPress: () => performLogout(router),
+                },
+            ]
+        );
     };
 
-    const generalSettings = [
-        { id: '1', label: 'Henkilötiedot', icon: 'user-alt', onPress: () => router.push('/general/personal-data') },
-        { id: '2', label: 'Yleiset', icon: 'cog', onPress: () => router.push('/general/general') },
-        { id: '3', label: 'Ostohistoria', icon: 'shopping-cart', onPress: () => router.push('/general/orders') },
-        { id: '4', label: 'Ilmoitukset', icon: 'bell', onPress: () => router.push('/general/notifications') },
-        { id: '5', label: 'Tietosuoja', icon: 'shield-alt', onPress: () => router.push('/general/privacy-policy') },
+    const accountSettings = [
+        {
+            id: '1',
+            label: 'Yhteystiedot',
+            icon: 'user-alt',
+            iconBg: '#E0F2FE',
+            iconColor: '#0284C7',
+            onPress: () => router.push('/general/personal-data')
+        },
+        {
+            id: '2',
+            label: 'Ostohistoria',
+            icon: 'shopping-bag',
+            iconBg: '#F3E8FF',
+            iconColor: '#9333EA',
+            onPress: () => router.push('/general/orders')
+        },
+        {
+            id: '3',
+            label: 'Kutsu kaveri & tienaa 5 €',
+            icon: 'gift',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            onPress: () => router.push('/general/referral')
+        },
+        {
+            id: '4',
+            label: 'Ilmoitukset',
+            icon: 'bell',
+            iconBg: '#FCE7F3',
+            iconColor: '#DB2777',
+            onPress: () => router.push('/general/notifications')
+        },
+        {
+            id: '5',
+            label: 'Yleiset asetukset',
+            icon: 'cog',
+            iconBg: '#F1F5F9',
+            iconColor: '#475569',
+            onPress: () => router.push('/general')
+        },
+    ];
+
+    const supportSettings = [
         {
             id: '6',
-            label: 'Ota Yhteyttä',
-            icon: 'comment',
-            onPress: () => router.push('/general/chat'),
-            badge: unreadCount > 0 ? unreadCount : null
+            label: 'Keskustelut',
+            icon: 'comments',
+            iconBg: '#DCFCE7',
+            iconColor: '#16A34A',
+            badge: unreadCount,
+            onPress: () => router.push('/general/chat')
+        },
+        {
+            id: '7',
+            label: 'Tietosuojakäytäntö',
+            icon: 'shield-alt',
+            iconBg: '#F1F5F9',
+            iconColor: '#475569',
+            onPress: () => router.push('/general/privacy-policy')
         },
     ];
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#00C2FF" translucent={true} />
+
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* 1. YLÄOSA: Taustaliukuväri, otsikko, avatar ja nimi */}
                 <ProfileHeader
                     onEditPress={handleEditPress}
                     onLogoutPress={handleLogoutPress}
                 />
 
-                <View style={styles.contentContainer}>
-                    <View style={styles.stats}>
-                        {isLoading ? (
-                            <View style={styles.loaderContainer}>
-                                <ActivityIndicator size="small" color="#00c2ff" />
-                            </View>
-                        ) : (
-                            <StatsBar points={points} orders={orderCount} />
-                        )}
+                {/* 2. STATS-PALKKI: Tilaukset ja Pisteet */}
+                <View style={styles.statsWrapper}>
+                    <StatsBar
+                        orderCount={orderCount}
+                        points={points}
+                        onOrdersPress={() => router.push('/general/orders')}
+                        onPointsPress={() => router.push('/general/referral')}
+                    />
+                </View>
+
+                {/* 3. ASETUSLISTAT */}
+                <View style={styles.content}>
+                    <View style={styles.section}>
+                        <Text style={styles.sectionHeader}>Tili ja toiminnot</Text>
+                        <SettingsList items={accountSettings} />
                     </View>
 
-                    <SettingsList title={'Yleiset'} items={generalSettings} />
+                    <View style={styles.section}>
+                        <Text style={styles.sectionHeader}>Asiakaspalvelu & Tietosuoja</Text>
+                        <SettingsList items={supportSettings} />
+                    </View>
+
+                    {/* 4. ULOSKIRJAUTUMINEN */}
+                    <TouchableOpacity
+                        style={styles.logoutButton}
+                        onPress={handleLogoutPress}
+                        activeOpacity={0.8}
+                    >
+                        <Feather name="log-out" size={18} color="#EF4444" style={styles.logoutIcon} />
+                        <Text style={styles.logoutText}>Kirjaudu ulos</Text>
+                    </TouchableOpacity>
+
+                    {/* SOVELLUSVERSIO */}
+                    <Text style={styles.versionText}>Versio 1.0.0 (Build 42)</Text>
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 };
 
-const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#F7F7F7' },
-    scrollView: { flex: 1 },
-    contentContainer: { paddingBottom: 30 },
-    stats: { alignItems: "center", marginBottom: 20, marginTop: 10, minHeight: 80, justifyContent: 'center' },
-    loaderContainer: {
-        backgroundColor: "white",
-        borderRadius: 15,
-        paddingVertical: 20,
-        width: '90%',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 3,
-        shadowColor: "#000",
-        shadowOpacity: 0.1,
-    }
-});
-
 export default ProfileScreen;
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 110,
+    },
+    statsWrapper: {
+        marginTop: -30,
+        zIndex: 10,
+    },
+    content: {
+        paddingHorizontal: 20,
+        paddingTop: 16,
+    },
+    section: {
+        marginBottom: 20,
+    },
+    sectionHeader: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#94A3B8',
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+        marginBottom: 8,
+        marginLeft: 4,
+    },
+    logoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 16,
+        borderRadius: 18,
+        marginTop: 8,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
+        shadowColor: '#EF4444',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    logoutIcon: {
+        marginRight: 8,
+    },
+    logoutText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#EF4444',
+    },
+    versionText: {
+        textAlign: 'center',
+        fontSize: 12,
+        color: '#94A3B8',
+        marginBottom: 10,
+    },
+});

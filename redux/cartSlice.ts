@@ -20,17 +20,18 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     // LISÄÄ TUOTE KORIIN
-    addToCart: (state, action: PayloadAction<Omit<CartItem, 'quantity'>>) => {
+    addToCart: (state, action: PayloadAction<Omit<CartItem, 'quantity'> & { quantity?: number }>) => {
       const productToAdd = action.payload;
+      const qtyToAdd = productToAdd.quantity || 1;
       // Tarkistetaan onko tuote jo korissa
       const existingItem = state.items.find(item => item.id === productToAdd.id);
 
       if (existingItem) {
-        // Jos on, kasvatetaan määrää yhdellä
-        existingItem.quantity += 1;
+        // Jos on, kasvatetaan määrää
+        existingItem.quantity += qtyToAdd;
       } else {
-        // Jos ei, lisätään se uutena tuotteena määrällä 1
-        state.items.push({ ...productToAdd, quantity: 1 });
+        // Jos ei, lisätään se uutena tuotteena
+        state.items.push({ id: productToAdd.id, name: productToAdd.name, price: productToAdd.price, quantity: qtyToAdd });
       }
     },
     // POISTA TUOTE KOKONAAN KORISTA

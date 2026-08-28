@@ -5,8 +5,6 @@ import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'reac
 const COLORS = {
     primary: '#005D97',
     white: 'white',
-    gradientStart: '#8ed6ff',
-    gradientEnd: '#4da3e0ff',
 };
 
 const BasketImage = require("../../assets/images/pointy-basket-3d.png");
@@ -21,11 +19,20 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ onStartPress, style }) => {
     return (
         <LinearGradient
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+            end={{ x: 1, y: 1 }}
+            colors={['#5CD1FF', '#00C2FF', '#0099FF']}
             // LISÄTTY: Yhdistetään styles.header ja ulkoinen style
             style={[styles.header, style]}
         >
+            {/* 🌊 KORISTEELLISET AALTO- JA VIRTAUSVIIVAT 🌊 */}
+            <View style={styles.lineContainer} pointerEvents="none">
+                <View style={styles.arcOuter} />
+                <View style={styles.arcMiddle} />
+                <View style={styles.arcInner} />
+                <View style={styles.diagonalLine1} />
+                <View style={styles.diagonalLine2} />
+            </View>
+
             <View style={styles.headerContent}>
                 <Text style={styles.title}>Pyykkiä tulossa?</Text>
                 <Text style={styles.subtitle}>Valitse pestävät ja noutoaika, me hoidamme loput.</Text>
@@ -56,18 +63,79 @@ const styles = StyleSheet.create({
         padding: 25,
         paddingTop: 0,
         paddingBottom: 135,
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    lineContainer: {
+        ...StyleSheet.absoluteFillObject,
+        overflow: 'hidden',
+    },
+    arcOuter: {
+        position: 'absolute',
+        top: -90,
+        right: -70,
+        width: 340,
+        height: 340,
+        borderRadius: 170,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.22)',
+    },
+    arcMiddle: {
+        position: 'absolute',
+        top: -50,
+        right: -30,
+        width: 260,
+        height: 260,
+        borderRadius: 130,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.18)',
+    },
+    arcInner: {
+        position: 'absolute',
+        top: -10,
+        right: 10,
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderStyle: 'dashed',
+    },
+    diagonalLine1: {
+        position: 'absolute',
+        bottom: 25,
+        left: -40,
+        width: 300,
+        height: 1.5,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        transform: [{ rotate: '-22deg' }],
+    },
+    diagonalLine2: {
+        position: 'absolute',
+        bottom: 55,
+        left: -20,
+        width: 240,
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        transform: [{ rotate: '-22deg' }],
     },
     title: {
         fontSize: 28,
         fontWeight: 'bold',
         color: COLORS.white,
         marginBottom: 10,
+        textShadowColor: 'rgba(0, 40, 95, 0.35)',
+        textShadowOffset: { width: 0, height: 1.5 },
+        textShadowRadius: 4,
     },
     subtitle: {
         fontSize: 16,
         color: COLORS.white,
         marginBottom: 25,
         maxWidth: '70%',
+        textShadowColor: 'rgba(0, 40, 95, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
     },
     headerContent: {
         // Sisältöä nostetaan ylös, jotta se mahtuu tyhjään tilaan

@@ -1,5 +1,6 @@
-import { Feather } from '@expo/vector-icons'; // LISÄTTY: Ikoni takaisin-nappia varten
-import { useRouter } from 'expo-router'; // LISÄTTY: Reititys takaisin-nappia varten
+import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -10,35 +11,43 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HistoryItem from '../../components/orders/HistoryItems';
+import OrderReceiptModal from '../../components/orders/OrderReceiptModal';
 import { supabase } from '../../lib/supabase';
 
 const COLORS = {
-    background: '#F8F9FD',
-    darkText: '#0A1B32',
-    lightGray: '#EFF2F7',
+    background: '#F8FAFC',
+    darkText: '#0F172A',
     white: '#FFFFFF',
-    textGray: '#6B7280',
-    primaryBlue: '#0E1B38',
-    borderColor: '#EFEFEF',
+    textGray: '#64748B',
+    primary: '#00C2FF',
+    cardBorder: '#F1F5F9',
 };
-
-// ... (Interface-määrittelyt pysyvät samoina) ...
-interface OrderItem {
-    product_name: string;
-    service_name: string;
-    quantity: number;
-}
 
 interface Order {
     id: string;
     created_at: string;
     payment_amount: number;
     status: string;
-    order_items: OrderItem[];
+    service_name: string;
+    address?: string;
+    pickup_date?: string;
+    pickup_time?: string;
+    return_date?: string;
+    return_time?: string;
+    pickup_weight_kg?: string;
+    return_weight_kg?: string;
+    payment_status?: string;
+    payment_method?: string;
+    access_code?: string;
+    tracking_status?: string;
+    service_fee?: number;
+    delivery_fee?: number;
+    vat_rate?: number;
+    vat_amount?: number;
 }
 
 interface GroupedOrders {
@@ -47,14 +56,37 @@ interface GroupedOrders {
 }
 
 export default function MyOrdersScreen() {
-    const router = useRouter(); // LISÄTTY
+    const router = useRouter();
     const [historyOrders, setHistoryOrders] = useState<GroupedOrders[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [modalVisible, setModalVisible] = useState(false);
+
+    const handleOpenReceipt = (order: Order) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        setSelectedOrder(order);
+        setModalVisible(true);
+    };
+
+    const formatServiceName = (name: string) => {
+        if (!name) return "Pesulapalvelu";
+        const items = name.split(', ');
+        let firstItem = items[0];
+
+        if (items.length > 1) {
+            const maxLength = 18;
+            const displayName = firstItem.length > maxLength
+                ? firstItem.substring(0, maxLength) + "..."
+                : firstItem;
+            return `${displayName} + ${items.length - 1} muuta`;
+        }
+        return firstItem.length > 28 ? firstItem.substring(0, 25) + "..." : firstItem;
+    };
+
     const groupOrdersByMonth = useCallback((orders: Order[]) => {
         const groups: { [key: string]: Order[] } = {};
-
         orders.forEach(order => {
             const date = new Date(order.created_at);
             const now = new Date();
@@ -64,12 +96,10 @@ export default function MyOrdersScreen() {
                 groupTitle = 'Tässä kuussa';
             } else {
                 const monthNames = ["Tammikuu", "Helmikuu", "Maaliskuu", "Huhtikuu", "Toukokuu", "Kesäkuu", "Heinäkuu", "Elokuu", "Syyskuu", "Lokakuu", "Marraskuu", "Joulukuu"];
-                groupTitle = monthNames[date.getMonth()];
+                groupTitle = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
             }
 
-            if (!groups[groupTitle]) {
-                groups[groupTitle] = [];
-            }
+            if (!groups[groupTitle]) groups[groupTitle] = [];
             groups[groupTitle].push(order);
         });
 
@@ -77,7 +107,6 @@ export default function MyOrdersScreen() {
             title: key,
             data: groups[key]
         }));
-
         setHistoryOrders(groupedArray);
     }, []);
 
@@ -93,21 +122,33 @@ export default function MyOrdersScreen() {
 
     const fetchOrders = useCallback(async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user;
             if (!user) return;
 
             const { data, error } = await supabase
                 .from('orders')
                 .select(`
-                    id,
-                    created_at,
-                    payment_amount, 
-                    status,
-                    order_items (
-                        product_name,
-                        service_name,
-                        quantity
-                    )
+                    id, 
+                    created_at, 
+                    final_price, 
+                    status, 
+                    tracking_status,
+                    service_name, 
+                    address, 
+                    pickup_date, 
+                    pickup_time, 
+                    return_date, 
+                    return_time, 
+                    pickup_weight_kg, 
+                    return_weight_kg,
+                    payment_status,
+                    payment_method,
+                    access_code,
+                    service_fee,
+                    delivery_fee,
+                    vat_rate,
+                    vat_amount
                 `)
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
@@ -115,9 +156,30 @@ export default function MyOrdersScreen() {
             if (error) throw error;
 
             if (data) {
-                groupOrdersByMonth(data as any);
+                const mappedData: Order[] = data.map(item => ({
+                    id: item.id,
+                    created_at: item.created_at,
+                    payment_amount: parseFloat(item.final_price || '0'),
+                    status: item.status || 'pending',
+                    tracking_status: item.tracking_status,
+                    service_name: item.service_name || 'Pesulapalvelu',
+                    address: item.address,
+                    pickup_date: item.pickup_date,
+                    pickup_time: item.pickup_time,
+                    return_date: item.return_date,
+                    return_time: item.return_time,
+                    pickup_weight_kg: item.pickup_weight_kg,
+                    return_weight_kg: item.return_weight_kg,
+                    payment_status: item.payment_status,
+                    payment_method: item.payment_method,
+                    access_code: item.access_code,
+                    service_fee: item.service_fee !== undefined && item.service_fee !== null ? parseFloat(item.service_fee) : 2.00,
+                    delivery_fee: item.delivery_fee !== undefined && item.delivery_fee !== null ? parseFloat(item.delivery_fee) : 0.00,
+                    vat_rate: item.vat_rate !== undefined && item.vat_rate !== null ? parseFloat(item.vat_rate) : 25.5,
+                    vat_amount: item.vat_amount !== undefined && item.vat_amount !== null ? parseFloat(item.vat_amount) : undefined,
+                }));
+                groupOrdersByMonth(mappedData);
             }
-
         } catch (error) {
             console.error('Error fetching orders:', error);
         } finally {
@@ -126,21 +188,11 @@ export default function MyOrdersScreen() {
         }
     }, [groupOrdersByMonth]);
 
-    useEffect(() => {
-        fetchOrders();
-    }, [fetchOrders]);
+    useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return `${date.getDate()}. ${["Tammikuuta", "Helmikuuta", "Maaliskuuta", "Huhtikuuta", "Toukokuuta", "Kesäkuuta", "Heinäkuuta", "Elokuuta", "Syyskuuta", "Lokakuuta", "Marraskuuta", "Joulukuuta"][date.getMonth()]}`;
-    };
-
-    const getItemsSummary = (items: OrderItem[]) => {
-        if (!items || items.length === 0) return "Ei tuotteita";
-        if (items.length === 1) {
-            return items[0].product_name || items[0].service_name || "1 tuote";
-        }
-        return `${items.length} tuotetta`;
     };
 
     const onRefresh = () => {
@@ -149,25 +201,27 @@ export default function MyOrdersScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <StatusBar barStyle="dark-content" />
 
-            {/* PÄIVITETTY HEADER TAKAISIN-NAPILLA */}
+            {/* HEADER */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Feather name="chevron-left" size={28} color={COLORS.darkText} />
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+                    <Feather name="chevron-left" size={24} color={COLORS.darkText} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Tilaushistoria</Text>
-                <View style={{ width: 28 }} />
+                <Text style={styles.headerTitle}>Ostohistoria & Kuitit</Text>
+                <View style={{ width: 38 }} />
             </View>
 
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
                 showsVerticalScrollIndicator={false}
             >
                 {loading ? (
-                    <ActivityIndicator size="large" color={COLORS.primaryBlue} style={{ marginTop: 50 }} />
+                    <View style={styles.centered}>
+                        <ActivityIndicator size="large" color={COLORS.primary} />
+                    </View>
                 ) : (
                     historyOrders.length > 0 ? (
                         historyOrders.map((group, index) => (
@@ -176,73 +230,80 @@ export default function MyOrdersScreen() {
                                 {group.data.map((order) => (
                                     <HistoryItem
                                         key={order.id}
-                                        store={getItemsSummary(order.order_items)}
+                                        store={formatServiceName(order.service_name)}
                                         date={formatDate(order.created_at)}
-                                        price={`${order.payment_amount?.toFixed(2) || '0.00'} €`}
+                                        price={`${(order.payment_amount ?? 0).toFixed(2).replace('.', ',')} €`}
                                         items={formatExactTime(order.created_at)}
                                         isBurger={false}
+                                        onOpenReceipt={() => handleOpenReceipt(order)}
                                     />
                                 ))}
                             </View>
                         ))
                     ) : (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyStateText}>Ei aiempia tilauksia.</Text>
+                            <View style={styles.emptyIconBox}>
+                                <Feather name="shopping-bag" size={36} color="#94A3B8" />
+                            </View>
+                            <Text style={styles.emptyStateTitle}>Ei aiempia tilauksia</Text>
+                            <Text style={styles.emptyStateText}>Tilaamasi pesulapalvelut ja viralliset kuitit kertyvät tänne.</Text>
                         </View>
                     )
                 )}
             </ScrollView>
+
+            <OrderReceiptModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                order={selectedOrder}
+            />
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-    },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    centered: { paddingVertical: 60, alignItems: 'center', justifyContent: 'center' },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingVertical: Platform.OS === 'ios' ? 15 : 20,
+        paddingVertical: Platform.OS === 'ios' ? 14 : 18,
         backgroundColor: COLORS.white,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.borderColor,
+        borderBottomColor: COLORS.cardBorder,
     },
     backButton: {
-        padding: 5,
-        marginLeft: -5,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: COLORS.darkText,
-    },
-    scrollContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 50,
-        paddingTop: 10,
-    },
-    section: {
-        marginBottom: 20,
-    },
-    sectionHeader: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.textGray,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginTop: 15,
-        marginBottom: 10,
-    },
-    emptyState: {
-        marginTop: 100,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: '#F1F5F9',
+        justifyContent: 'center',
         alignItems: 'center',
     },
-    emptyStateText: {
-        fontSize: 16,
+    headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.darkText },
+    scrollContent: { paddingHorizontal: 16, paddingBottom: 60, paddingTop: 14 },
+    section: { marginBottom: 16 },
+    sectionHeader: {
+        fontSize: 12,
+        fontWeight: '800',
         color: COLORS.textGray,
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+        marginBottom: 10,
+        marginLeft: 4,
     },
+    emptyState: { marginTop: 80, alignItems: 'center', paddingHorizontal: 40 },
+    emptyIconBox: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: '#F1F5F9',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    emptyStateTitle: { fontSize: 18, fontWeight: '800', color: COLORS.darkText, marginBottom: 6 },
+    emptyStateText: { fontSize: 14, color: COLORS.textGray, textAlign: 'center', lineHeight: 20 },
 });

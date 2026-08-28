@@ -24,7 +24,7 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ onEditAddress, style 
     // Hakee profiilin tiedot Reduxista
     // Tässä käytetään AddressSelectoria vastaamaan alkuperäistä CustomerInfoBlockin osoiteosiota.
     // Oletan, että selectUserProfile palauttaa UserProfile-objektin.
-    const profile: UserProfile | null = useSelector(selectUserProfile) || {};
+    const profile: Partial<UserProfile> | null = useSelector(selectUserProfile) || {};
 
     // Nouto-osoite (osoite on pakollinen tilauksen tekemiseksi)
     const currentAddress = profile?.address;

@@ -3,10 +3,11 @@ import { StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 
 const COLORS = {
     white: '#FFFFFF',
-    darkText: '#0A1B32',
-    textGray: '#6B7280',
-    lightGray: '#F8F9FD',
-    borderColor: '#EFEFEF',
+    darkText: '#0F172A',
+    textGray: '#64748B',
+    cardBorder: '#F1F5F9',
+    inputBg: '#F8FAFC',
+    inputBorder: '#E2E8F0',
 };
 
 interface ExtraInstructionsProps {
@@ -20,25 +21,25 @@ const ExtraInstructions: React.FC<ExtraInstructionsProps> = ({ onChangeText, ini
 
     const handleTextChange = (text: string) => {
         setInstructions(text);
-        onChangeText(text); // Välitä arvo yläkomponentille tallennusta varten
+        onChangeText(text);
     };
 
     return (
         <View style={[styles.card, style]}>
-            <Text style={styles.title}>Lisätiedot</Text>
-
+            <Text style={styles.title}>Lisäohjeet kuljettajalle</Text>
             <Text style={styles.subtitle}>
-                Erityisohjeet (valinnainen)
+                Valinnainen (esim. ovikoodi, porras tai pesutoiveet)
             </Text>
 
             <TextInput
                 style={styles.input}
-                placeholder="Esim. nouto-osoite on ulko-oven vieressä, ovikoodi on 1234, tai allergiaa aiheuttavia aineita."
+                placeholder="Kirjoita ovikoodi, kerros tai muut lisäohjeet tähän..."
+                placeholderTextColor="#94A3B8"
                 value={instructions}
                 onChangeText={handleTextChange}
-                multiline={true} // TÄRKEÄÄ: Mahdollistaa monirivisen syötön
-                numberOfLines={4} // Alkuperäinen korkeus (Androidissa vaikuttaa)
-                textAlignVertical="top" // Teksti alkaa ylhäältä
+                multiline={true}
+                numberOfLines={3}
+                textAlignVertical="top"
             />
         </View>
     );
@@ -47,39 +48,39 @@ const ExtraInstructions: React.FC<ExtraInstructionsProps> = ({ onChangeText, ini
 const styles = StyleSheet.create({
     card: {
         backgroundColor: COLORS.white,
-        borderRadius: 12,
+        borderRadius: 24,
         padding: 20,
-        marginVertical: 10,
-        marginHorizontal: 20,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
+        marginVertical: 8,
+        marginHorizontal: 16,
         borderWidth: 1,
-        borderColor: COLORS.borderColor,
+        borderColor: COLORS.cardBorder,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
     },
     title: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontWeight: '800',
         color: COLORS.darkText,
-        marginBottom: 5,
+        marginBottom: 2,
     },
     subtitle: {
-        fontSize: 14,
+        fontSize: 12,
         color: COLORS.textGray,
-        marginBottom: 15,
+        marginBottom: 12,
     },
     input: {
-        backgroundColor: COLORS.lightGray,
-        paddingHorizontal: 15,
+        backgroundColor: COLORS.inputBg,
+        paddingHorizontal: 14,
         paddingVertical: 12,
-        borderRadius: 8,
-        fontSize: 16,
+        borderRadius: 16,
+        fontSize: 14,
         color: COLORS.darkText,
         borderWidth: 1,
-        borderColor: COLORS.borderColor,
-        minHeight: 120, // Antaa tilaa moniriviselle syötteelle
+        borderColor: COLORS.inputBorder,
+        minHeight: 80,
     },
 });
 

@@ -1,11 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { supabase } from '../lib/supabase'; // Varmista, että polku Supabaseen on oikea
-import { setProfile } from './profileSlice'; // setProfile action profileSlice-tiedostosta
+import { supabase } from '../lib/supabase';
+import { clearProfile, setProfile } from './profileSlice';
 
-// Määrittele rajapinta Supabasesta tulevalle profiilidatalle. 
-// Tämän pitäisi olla sama kuin profileSlice.ts-tiedostossa, 
-// mutta emme voi tuoda sitä suoraan tässä tiedostossa tyypitysvirheiden takia.
-// 🔥 TÄRKEÄÄ: Varmista, että nämä kentät ovat samat kuin profileSlice.ts:ssä!
 interface SupabaseProfileData {
     id: string;
     first_name: string | null | undefined;
@@ -13,9 +9,12 @@ interface SupabaseProfileData {
     phone: string | null | undefined;
     email: string | null | undefined;
     address: string | null | undefined;
-    // Lisää muut kentät, kuten profile_image, updated_at, user_id, jos tarvitset niitä
+    points_balance?: number;
+    birth_date?: string | null | undefined;
+    age?: string | number | null | undefined;
+    gender?: string | null | undefined;
+    role?: string | null | undefined;
 }
-
 
 /**
  * Asynkroninen toiminto (Thunk) käyttäjän profiilin lataamiseen Supabasesta
@@ -25,56 +24,58 @@ export const fetchUserProfile = createAsyncThunk(
     'profile/fetchUserProfile',
     async (arg, { dispatch, rejectWithValue }) => {
         try {
-            // 1. Hae kirjautunut käyttäjä
-            const { data: { user } } = await supabase.auth.getUser();
+            // 1. Hae kirjautunut käyttäjä nopeasti välimuistista
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user;
 
             if (!user) {
-                // Jos käyttäjä ei ole kirjautunut, ei haeta profiilia
+                // Jos käyttäjä ei ole kirjautunut, tyhjennetään profiili
+                dispatch(clearProfile());
                 return rejectWithValue('Käyttäjä ei ole kirjautunut sisään');
             }
 
             // 2. Hae profiili profiles-taulusta
             let { data, error } = await supabase
                 .from('profiles')
-                .select('id, first_name, last_name, email, phone, address')
+                .select('*')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
-            if (error && error.code !== 'PGRST116') {
-                // PGRST116 on "Ei tuloksia", muut virheet ovat ongelmia
-                throw error;
+            if (error) {
+                console.warn('Profiilin hakuvaroitus:', error.message);
             }
 
             let profileData: SupabaseProfileData;
 
             if (!data) {
-                // Jos profiiliriviä ei löydy (ensimmäinen kerta), luo oletusarvot
                 profileData = {
                     id: user.id,
                     first_name: null,
                     last_name: null,
                     phone: null,
-                    email: user.email || null, // Varmistettu null-tyypiksi
+                    email: user.email || null,
                     address: null,
+                    points_balance: 0,
+                    age: null,
+                    sexuality: null,
+                    gender: null,
+                    bio: null,
                 };
             } else {
-                profileData = data as SupabaseProfileData;
+                profileData = {
+                    ...data,
+                    points_balance: data.points_balance || 0,
+                } as SupabaseProfileData;
             }
             
-            // 🔥 3. ASENNA PROFIILI REDUX-TILAAN setProfile-ACTIONIN KAUTTA 🔥
-            // dispatchataan suoraan setProfile-action, jota reducer käsittelee
+            // 3. Aseta profiili Redux-tilaan
             dispatch(setProfile(profileData));
 
-            return profileData; // Palauta data (valinnainen, mutta hyödyllinen)
+            return profileData;
 
         } catch (error: any) {
             console.error('Profiilin haku epäonnistui:', error);
-            // Palauta virhe, jotta Redux Toolkit osaa käsitellä sen
             return rejectWithValue(error.message || 'Profiilin lataus epäonnistui');
         }
     }
 );
-
-// Tämän tiedoston jälkeen:
-// 1. Muuta index.tsx kutsumaan dispatch(fetchUserProfile()).
-// 2. Päivitä PersonalInfoScreen.tsx kutsumaan dispatch(fetchUserProfile()).

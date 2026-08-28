@@ -1,17 +1,18 @@
 import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { supabase } from '../../lib/supabase';
 
 const COLORS = {
     white: '#FFFFFF',
-    darkText: '#0A1B32',
-    textGray: '#6B7280',
-    primary: '#00c2ff',
-    lightGray: '#F8F9FD',
-    borderColor: '#EFEFEF',
-    success: '#4CAF50',
-    error: '#FF4500',
+    darkText: '#0F172A',
+    textGray: '#64748B',
+    primary: '#00C2FF',
+    lightGray: '#F8FAFC',
+    cardBorder: '#F1F5F9',
+    success: '#10B981',
+    error: '#EF4444',
 };
 
 interface Coupon {
@@ -38,7 +39,7 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, style }) => 
     const [validationMessage, setValidationMessage] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
     const handleApplyCoupon = async () => {
-        if (!couponCode) {
+        if (!couponCode.trim()) {
             setValidationMessage({ message: "Syötä kuponkikoodi.", type: 'info' });
             return;
         }
@@ -57,48 +58,72 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, style }) => 
                 .single();
 
             if (error || !couponData) {
-                setValidationMessage({ message: "Kuponkikoodia ei löytynyt.", type: 'error' });
+                // 🔍 TARKISTETAAN ONKO KYSEESSÄ KAVERIN SUOSITTELUKOODI (REFERRAL) 🔍
+                const { data: referrerProfile } = await supabase
+                    .from('profiles')
+                    .select('user_id, first_name')
+                    .eq('referral_code', couponCode.trim().toUpperCase())
+                    .single();
+
+                if (referrerProfile) {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                    const referralCoupon: Coupon = {
+                        id: `ref_${referrerProfile.user_id}`,
+                        code: couponCode.trim().toUpperCase(),
+                        discount_type: 'fixed',
+                        discount_value: 5,
+                        usage_limit: null,
+                        usage_count: 0,
+                        valid_from: null,
+                        valid_until: null,
+                    };
+                    setAppliedCoupon(referralCoupon);
+                    onCouponApplied(referralCoupon);
+                    setValidationMessage({
+                        message: `Kaverikoodi aktivoitu! 5,00 € alennus myönnetty.`,
+                        type: 'success'
+                    });
+                    return;
+                }
+
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+                setValidationMessage({ message: "Koodia ei löytynyt.", type: 'error' });
                 return;
             }
 
             const coupon = couponData as Coupon;
             const now = new Date();
 
-            // 2. TARKISTUKSET (Käsittelee NULL-arvot oikein)
-
-            // Alkupäivämäärä (jos määritelty)
+            // 2. TARKISTUKSET
             if (coupon.valid_from) {
                 const validFrom = new Date(coupon.valid_from);
                 if (now < validFrom) {
-                    setValidationMessage({ message: "Kuponki ei ole vielä astunut voimaan.", type: 'error' });
+                    setValidationMessage({ message: "Kuponki ei ole vielä voimassa.", type: 'error' });
                     return;
                 }
             }
 
-            // Loppupäivämäärä (jos määritelty)
             if (coupon.valid_until) {
                 const validUntil = new Date(coupon.valid_until);
-                validUntil.setHours(23, 59, 59, 999); // Koko päivä loppuun asti
+                validUntil.setHours(23, 59, 59, 999);
                 if (now > validUntil) {
-                    setValidationMessage({ message: "Kuponki on jo vanhentunut.", type: 'error' });
+                    setValidationMessage({ message: "Kuponki on vanhentunut.", type: 'error' });
                     return;
                 }
             }
 
-            // Käyttöraja (jos määritelty ja suurempi kuin nolla)
             if (coupon.usage_limit !== null && coupon.usage_limit > 0) {
                 if (coupon.usage_count >= coupon.usage_limit) {
-                    setValidationMessage({ message: "Kupongin käyttömäärä on tullut täyteen.", type: 'error' });
+                    setValidationMessage({ message: "Kupongin käyttömäärä on täynnä.", type: 'error' });
                     return;
                 }
             }
 
-            // 3. Alennuksen näyttömuoto
             const discountDisplay = coupon.discount_type === 'percentage'
                 ? `${coupon.discount_value}%`
                 : `${coupon.discount_value.toFixed(2)} €`;
 
-            // 4. Onnistuminen
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             setAppliedCoupon(coupon);
             onCouponApplied(coupon);
             setValidationMessage({
@@ -107,8 +132,7 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, style }) => 
             });
 
         } catch (err) {
-            console.error("Kuponkivirhe:", err);
-            setValidationMessage({ message: "Tarkistuksessa tapahtui odottamaton virhe.", type: 'error' });
+            setValidationMessage({ message: "Tarkistuksessa tapahtui virhe.", type: 'error' });
         } finally {
             setIsLoading(false);
         }
@@ -121,17 +145,17 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, style }) => 
         onCouponApplied(null);
     };
 
-    const statusColor = validationMessage?.type === 'success' ? COLORS.success : COLORS.error;
     const isApplied = !!appliedCoupon;
 
     return (
         <View style={[styles.card, style]}>
-            <Text style={styles.title}>Kuponki</Text>
+            <Text style={styles.title}>Alennus- tai suosittelukoodi</Text>
 
             <View style={styles.inputRow}>
                 <TextInput
                     style={[styles.input, isApplied && styles.inputDisabled]}
-                    placeholder="Syötä alennuskoodi"
+                    placeholder="Syötä koodi..."
+                    placeholderTextColor="#94A3B8"
                     value={couponCode}
                     onChangeText={setCouponCode}
                     editable={!isApplied && !isLoading}
@@ -142,6 +166,7 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, style }) => 
                     style={[styles.button, isApplied ? styles.clearButton : styles.applyButton]}
                     onPress={isApplied ? handleClearCoupon : handleApplyCoupon}
                     disabled={isLoading || (!couponCode && !isApplied)}
+                    activeOpacity={0.8}
                 >
                     {isLoading ? (
                         <ActivityIndicator size="small" color={COLORS.white} />
@@ -154,22 +179,16 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, style }) => 
             </View>
 
             {validationMessage && (
-                <View style={styles.messageContainer}>
+                <View style={[styles.messageContainer, validationMessage.type === 'success' ? styles.messageSuccess : styles.messageError]}>
                     <Feather
                         name={validationMessage.type === 'success' ? "check-circle" : "alert-circle"}
                         size={14}
-                        color={statusColor}
+                        color={validationMessage.type === 'success' ? COLORS.success : COLORS.error}
                     />
-                    <Text style={[styles.messageText, { color: statusColor }]}>
+                    <Text style={[styles.messageText, { color: validationMessage.type === 'success' ? COLORS.success : COLORS.error }]}>
                         {validationMessage.message}
                     </Text>
                 </View>
-            )}
-
-            {isApplied && (
-                <Text style={styles.appliedText}>
-                    ✅ Kuponki aktiivinen
-                </Text>
             )}
         </View>
     );
@@ -178,79 +197,80 @@ const CouponInput: React.FC<CouponInputProps> = ({ onCouponApplied, style }) => 
 const styles = StyleSheet.create({
     card: {
         backgroundColor: COLORS.white,
-        borderRadius: 12,
+        borderRadius: 24,
         padding: 20,
-        marginVertical: 10,
-        marginHorizontal: 20,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
+        marginVertical: 8,
+        marginHorizontal: 16,
         borderWidth: 1,
-        borderColor: COLORS.borderColor,
+        borderColor: COLORS.cardBorder,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
     },
     title: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 15,
+        fontWeight: '800',
         color: COLORS.darkText,
-        marginBottom: 15,
+        marginBottom: 12,
     },
     inputRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
     },
     input: {
         flex: 1,
         backgroundColor: COLORS.lightGray,
-        padding: 12,
-        borderRadius: 8,
-        fontSize: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 14,
+        fontSize: 14,
+        fontWeight: '700',
         color: COLORS.darkText,
         borderWidth: 1,
-        borderColor: COLORS.borderColor,
-        marginRight: 10,
+        borderColor: '#E2E8F0',
+        marginRight: 8,
     },
     inputDisabled: {
-        opacity: 0.7,
-        backgroundColor: COLORS.lightGray,
+        opacity: 0.65,
+        backgroundColor: '#F1F5F9',
     },
     button: {
         paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 8,
+        paddingHorizontal: 18,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        minWidth: 80,
     },
     applyButton: {
         backgroundColor: COLORS.primary,
     },
     clearButton: {
-        backgroundColor: COLORS.error,
+        backgroundColor: '#F1F5F9',
     },
     buttonText: {
         color: COLORS.white,
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 14,
+        fontWeight: '800',
     },
     messageContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 5,
-        padding: 5,
-        borderRadius: 5,
+        marginTop: 10,
+        padding: 8,
+        borderRadius: 10,
+    },
+    messageSuccess: {
+        backgroundColor: '#ECFDF5',
+    },
+    messageError: {
+        backgroundColor: '#FEF2F2',
     },
     messageText: {
-        fontSize: 14,
-        marginLeft: 8,
-    },
-    appliedText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: COLORS.success,
-        marginTop: 10,
+        fontSize: 12,
+        fontWeight: '600',
+        marginLeft: 6,
     },
 });
 

@@ -1,5 +1,6 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Checkbox } from 'expo-checkbox';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -62,150 +63,228 @@ export default function SignUpScreen() {
         setLoading(false);
     }
 
-
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="light-content" />
-            <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={styles.container}
-            >
-                <View style={styles.topContainer}>
-                    <Text style={styles.title}>Rekisteröidy Käyttäjäksi</Text>
-                    <Text style={styles.subtitle}>Kohti puhtaampaa arkea</Text>
-                </View>
+        <View style={styles.root}>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+            <LinearGradient
+                colors={['#5CD1FF', '#00C2FF', '#0099FF']}
+                style={StyleSheet.absoluteFillObject}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+            {/* 🌊 KORISTEELLISET AALTO- JA VIRTAUSVIIVAT 🌊 */}
+            <View style={styles.lineContainer} pointerEvents="none">
+                <View style={styles.arcOuter} />
+                <View style={styles.arcMiddle} />
+                <View style={styles.arcInner} />
+                <View style={styles.diagonalLine1} />
+                <View style={styles.diagonalLine2} />
+            </View>
 
-                <View style={styles.bottomContainer}>
-                    <View style={styles.inputContainer}>
-                        <Feather name="user" size={20} color="#6b7280" style={styles.icon} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="First Name"
-                            placeholderTextColor="#6b7280"
-                            value={firstName}
-                            onChangeText={setFirstName}
-                            autoCapitalize="words"
-                        />
-                    </View>
-                    <View style={styles.inputContainer}>
-                        <Feather name="user" size={20} color="#6b7280" style={styles.icon} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Last Name"
-                            placeholderTextColor="#6b7280"
-                            value={lastName}
-                            onChangeText={setLastName}
-                            autoCapitalize="words"
-                        />
-                    </View>
-                    <View style={styles.inputContainer}>
-                        <MaterialCommunityIcons name="email-fast-outline" size={20} color="#6b7280" style={styles.icon} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Email Adress"
-                            placeholderTextColor="#6b7280"
-                            value={email}
-                            onChangeText={setEmail}
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                        />
-                    </View>
-                    <View style={styles.inputContainer}>
-                        <Feather name="lock" size={20} color="#6b7280" style={styles.icon} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Password"
-                            placeholderTextColor="#6b7280"
-                            value={password}
-                            onChangeText={setPassword}
-                            autoCapitalize="none"
-                            secureTextEntry
-                        />
-                    </View>
-                    <View style={styles.inputContainer}>
-                        <Feather name="lock" size={20} color="#6b7280" style={styles.icon} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Retype Password"
-                            placeholderTextColor="#6b7280"
-                            value={retypePassword}
-                            onChangeText={setRetypePassword}
-                            autoCapitalize="none"
-                            secureTextEntry
-                        />
+            <SafeAreaView style={styles.safeArea}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={styles.container}
+                >
+                    <View style={styles.topContainer}>
+                        <Text style={styles.title}>Rekisteröidy Käyttäjäksi</Text>
+                        <Text style={styles.subtitle}>Kohti puhtaampaa arkea</Text>
                     </View>
 
-                    <View style={styles.checkboxContainer}>
-                        <Checkbox
-                            style={styles.checkbox}
-                            value={agreeToTerms}
-                            onValueChange={setAgreeToTerms}
-                            color={agreeToTerms ? '#60A5FA' : undefined}
-                        />
-                        <View style={styles.checkboxTextContainer}>
-                            <Text style={styles.checkboxText}>I agree to the </Text>
-                            <TouchableOpacity onPress={() => router.push('/auth/terms')}>
-                                <Text style={styles.linkText}>Terms & Privacy</Text>
-                            </TouchableOpacity>
+                    <View style={styles.bottomContainer}>
+                        <View style={styles.inputContainer}>
+                            <Feather name="user" size={20} color="#6b7280" style={styles.icon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="First Name"
+                                placeholderTextColor="#6b7280"
+                                value={firstName}
+                                onChangeText={setFirstName}
+                                autoCapitalize="words"
+                            />
                         </View>
+                        <View style={styles.inputContainer}>
+                            <Feather name="user" size={20} color="#6b7280" style={styles.icon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Last Name"
+                                placeholderTextColor="#6b7280"
+                                value={lastName}
+                                onChangeText={setLastName}
+                                autoCapitalize="words"
+                            />
+                        </View>
+                        <View style={styles.inputContainer}>
+                            <MaterialCommunityIcons name="email-fast-outline" size={20} color="#6b7280" style={styles.icon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Email Adress"
+                                placeholderTextColor="#6b7280"
+                                value={email}
+                                onChangeText={setEmail}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                            />
+                        </View>
+                        <View style={styles.inputContainer}>
+                            <Feather name="lock" size={20} color="#6b7280" style={styles.icon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Password"
+                                placeholderTextColor="#6b7280"
+                                value={password}
+                                onChangeText={setPassword}
+                                autoCapitalize="none"
+                                secureTextEntry
+                            />
+                        </View>
+                        <View style={styles.inputContainer}>
+                            <Feather name="lock" size={20} color="#6b7280" style={styles.icon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Retype Password"
+                                placeholderTextColor="#6b7280"
+                                value={retypePassword}
+                                onChangeText={setRetypePassword}
+                                autoCapitalize="none"
+                                secureTextEntry
+                            />
+                        </View>
+
+                        <View style={styles.checkboxContainer}>
+                            <Checkbox
+                                style={styles.checkbox}
+                                value={agreeToTerms}
+                                onValueChange={setAgreeToTerms}
+                                color={agreeToTerms ? '#60A5FA' : undefined}
+                            />
+                            <View style={styles.checkboxTextContainer}>
+                                <Text style={styles.checkboxText}>I agree to the </Text>
+                                <TouchableOpacity onPress={() => router.push('/auth/terms')}>
+                                    <Text style={styles.linkText}>Terms & Privacy</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.signupButton}
+                            onPress={signUpWithEmail}
+                            disabled={loading}
+                        >
+                            <Text style={styles.signupButtonText}>{loading ? 'Loading...' : 'Sign Up'}</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => router.replace('/auth/login')}>
+                            <Text style={styles.signInLink}>
+                                Have an account? <Text style={styles.linkText}>Sign In</Text>
+                            </Text>
+                        </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity
-                        style={styles.signupButton}
-                        onPress={signUpWithEmail}
-                        disabled={loading}
-                    >
-                        <Text style={styles.signupButtonText}>{loading ? 'Loading...' : 'Sign Up'}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={() => router.replace('/auth/login')}>
-                        <Text style={styles.signInLink}>
-                            Have an account? <Text style={styles.linkText}>Sign In</Text>
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    root: {
+        flex: 1,
+    },
     safeArea: {
         flex: 1,
-        backgroundColor: '#7BCFFF',
+        backgroundColor: 'transparent',
+    },
+    lineContainer: {
+        ...StyleSheet.absoluteFillObject,
+        overflow: 'hidden',
+    },
+    arcOuter: {
+        position: 'absolute',
+        top: -80,
+        right: -60,
+        width: 320,
+        height: 320,
+        borderRadius: 160,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.22)',
+    },
+    arcMiddle: {
+        position: 'absolute',
+        top: -40,
+        right: -20,
+        width: 240,
+        height: 240,
+        borderRadius: 120,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.18)',
+    },
+    arcInner: {
+        position: 'absolute',
+        top: 0,
+        right: 20,
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderStyle: 'dashed',
+    },
+    diagonalLine1: {
+        position: 'absolute',
+        top: 90,
+        left: -50,
+        width: 280,
+        height: 1.5,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        transform: [{ rotate: '-22deg' }],
+    },
+    diagonalLine2: {
+        position: 'absolute',
+        top: 125,
+        left: -30,
+        width: 220,
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        transform: [{ rotate: '-22deg' }],
     },
     container: {
         flex: 1,
     },
     topContainer: {
-        padding: 30,
-        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 20 : 50,
-        paddingBottom: 50,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
+        paddingHorizontal: 30,
+        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ? 10 : 20) : 20,
+        paddingBottom: 35,
         alignItems: 'center',
     },
     title: {
-        fontSize: 32,
+        fontSize: 30,
         fontWeight: 'bold',
         color: 'white',
         textAlign: 'center',
+        textShadowColor: 'rgba(0, 0, 0, 0.25)',
+        textShadowRadius: 1,
+        textShadowOffset: { width: 0, height: 2 },
     },
     subtitle: {
         fontSize: 16,
         color: 'white',
-        marginTop: 10,
+        marginTop: 8,
+        letterSpacing: 0.5,
+        textShadowColor: 'rgba(0, 40, 95, 0.35)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
     },
     bottomContainer: {
         flex: 1,
         backgroundColor: 'white',
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
         paddingHorizontal: 30,
-        paddingTop: 40,
+        paddingTop: 35,
         paddingBottom: 50,
         alignItems: 'center',
         marginBottom: -50,
     },
-
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -243,25 +322,29 @@ const styles = StyleSheet.create({
         color: '#6b7280',
     },
     linkText: {
-        color: '#3B82F6',
+        color: '#0284C7',
         fontWeight: 'bold',
     },
     signupButton: {
-        backgroundColor: '#60A5FA',
-        paddingVertical: 15,
+        backgroundColor: '#00C2FF',
+        paddingVertical: 16,
         borderRadius: 30,
         width: '100%',
         alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3.84,
-        elevation: 5,
+        shadowColor: "#00C2FF",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        elevation: 6,
     },
     signupButtonText: {
         color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontWeight: '800',
+        letterSpacing: 0.3,
+        textShadowColor: 'rgba(0, 40, 95, 0.35)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     signInLink: {
         marginTop: 25,

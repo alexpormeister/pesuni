@@ -1,9 +1,9 @@
-import { Fontisto } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Alert,
-    Image,
     KeyboardAvoidingView,
     Platform,
     StatusBar,
@@ -45,37 +45,48 @@ export default function ForgotPasswordScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="dark-content" />
+        <View style={styles.root}>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+            <LinearGradient
+                colors={['#5CD1FF', '#00C2FF', '#0099FF']}
+                style={StyleSheet.absoluteFillObject}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+            {/* 🌊 KORISTEELLISET AALTO- JA VIRTAUSVIIVAT 🌊 */}
+            <View style={styles.lineContainer} pointerEvents="none">
+                <View style={styles.arcOuter} />
+                <View style={styles.arcMiddle} />
+                <View style={styles.arcInner} />
+                <View style={styles.diagonalLine1} />
+                <View style={styles.diagonalLine2} />
+            </View>
+
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.container}
             >
-                <View style={styles.topContainer}>
-                    <Image
-                        source={require('../../assets/images/blue-brush.png')}
-                        style={styles.backgroundImage}
-                    />
-                    <View style={styles.iconContainer}>
-                        <Fontisto name="locked" size={50} color="#27476e" />
-                    </View>
-                    <View style={styles.titleContainer}>
+                <SafeAreaView edges={['top']} style={styles.topArea}>
+                    <View style={styles.topContainer}>
+                        <View style={styles.iconCircle}>
+                            <Feather name="lock" size={38} color="#00C2FF" />
+                        </View>
                         <Text style={styles.boldTitle}>Unohtuiko</Text>
                         <Text style={styles.normalTitle}>Salasana?</Text>
+                        <Text style={styles.subtitle}>
+                            Ei hätää, lähetämme sinulle ohjeet{'\n'}salasanan palauttamiseen.
+                        </Text>
                     </View>
-                    <Text style={styles.subtitle}>
-                        Ei hätää, lähetämme sinulle ohjeet{'\n'}salasanan palauttamiseen.
-                    </Text>
-                </View>
+                </SafeAreaView>
 
-                <View style={styles.bottomContainer}>
-                    <View style={styles.inputWrapper}>
-                        <Text style={styles.inputLabel}>Email</Text>
+                {/* VALKOINEN KORTTI - NOSTETTU YLEMMÄS JA TÄYTTÄÄ KOKO POHJAN ILMAN SINISTÄ VUOTOA */}
+                <View style={styles.whiteCard}>
+                    <SafeAreaView edges={['bottom']} style={styles.cardInner}>
                         <View style={styles.inputContainer}>
-                            <Fontisto name="email" size={20} color="#6b7280" style={styles.icon} />
+                            <Feather name="mail" size={20} color="#6b7280" style={styles.icon} />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Enter your Email"
+                                placeholder="Kirjoita sähköpostiosoitteesi"
                                 placeholderTextColor="#6b7280"
                                 value={email}
                                 onChangeText={setEmail}
@@ -83,109 +94,180 @@ export default function ForgotPasswordScreen() {
                                 keyboardType="email-address"
                             />
                         </View>
-                    </View>
 
-                    <TouchableOpacity
-                        style={styles.resetButton}
-                        onPress={handlePasswordReset}
-                        disabled={loading}
-                    >
-                        <Text style={styles.resetButtonText}>
-                            {loading ? 'Lähetetään...' : 'Palauta Salasana'}
-                        </Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.resetButton}
+                            onPress={handlePasswordReset}
+                            disabled={loading}
+                        >
+                            <Text style={styles.resetButtonText}>
+                                {loading ? 'Lähetetään...' : 'Palauta Salasana'}
+                            </Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity onPress={() => router.replace('/auth/login')}>
-                        <Text style={styles.signInLink}>Kirjaudu Sisään</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={() => router.replace('/auth/login')}
+                        >
+                            <Feather name="arrow-left" size={16} color="#0284C7" style={{ marginRight: 6 }} />
+                            <Text style={styles.signInLink}>Takaisin kirjautumiseen</Text>
+                        </TouchableOpacity>
+                    </SafeAreaView>
                 </View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
+    root: {
         flex: 1,
-        backgroundColor: 'white',
+        backgroundColor: '#00C2FF',
+    },
+    lineContainer: {
+        ...StyleSheet.absoluteFillObject,
+        overflow: 'hidden',
+    },
+    arcOuter: {
+        position: 'absolute',
+        top: -80,
+        right: -60,
+        width: 320,
+        height: 320,
+        borderRadius: 160,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.22)',
+    },
+    arcMiddle: {
+        position: 'absolute',
+        top: -40,
+        right: -20,
+        width: 240,
+        height: 240,
+        borderRadius: 120,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.18)',
+    },
+    arcInner: {
+        position: 'absolute',
+        top: 0,
+        right: 20,
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderStyle: 'dashed',
+    },
+    diagonalLine1: {
+        position: 'absolute',
+        top: 140,
+        left: -50,
+        width: 280,
+        height: 1.5,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        transform: [{ rotate: '-22deg' }],
+    },
+    diagonalLine2: {
+        position: 'absolute',
+        top: 180,
+        left: -30,
+        width: 220,
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        transform: [{ rotate: '-22deg' }],
     },
     container: {
         flex: 1,
+        justifyContent: 'space-between',
+    },
+    topArea: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingBottom: 20,
     },
     topContainer: {
-        flex: 0.5,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 30,
-        backgroundColor: 'white',
-    },
-    iconContainer: {
-        marginBottom: 20,
-        alignItems: 'center',
-    },
-    backgroundImage: {
-        position: 'absolute',
         width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-        opacity: 0.2,
+        marginTop: 10,
     },
-    titleContainer: {
+    iconCircle: {
+        width: 76,
+        height: 76,
+        borderRadius: 38,
+        backgroundColor: 'white',
+        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 15,
+        alignSelf: 'center',
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
     },
     boldTitle: {
         fontWeight: 'bold',
         fontSize: 32,
-        color: '#27476e',
+        color: 'white',
         textAlign: 'center',
-        marginBottom: -5,
+        alignSelf: 'center',
+        textShadowColor: 'rgba(0, 40, 95, 0.35)',
+        textShadowOffset: { width: 0, height: 1.5 },
+        textShadowRadius: 4,
     },
     normalTitle: {
         fontSize: 32,
-        color: '#27476e',
+        fontWeight: '900',
+        color: 'white',
         textAlign: 'center',
+        alignSelf: 'center',
+        marginBottom: 8,
+        textShadowColor: 'rgba(0, 40, 95, 0.35)',
+        textShadowOffset: { width: 0, height: 1.5 },
+        textShadowRadius: 4,
     },
     subtitle: {
-        fontSize: 16,
-        color: '#27476e',
+        fontSize: 15,
+        color: 'white',
         textAlign: 'center',
-        marginBottom: 40,
-        lineHeight: 24,
+        alignSelf: 'center',
+        lineHeight: 22,
+        textShadowColor: 'rgba(0, 40, 95, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
     },
-    bottomContainer: {
-        flex: 0.5,
+    whiteCard: {
+        backgroundColor: 'white',
+        borderTopLeftRadius: 42,
+        borderTopRightRadius: 42,
         paddingHorizontal: 30,
         paddingTop: 40,
-        paddingBottom: 0,
+        paddingBottom: 25,
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 12,
         width: '100%',
-        backgroundColor: '#87CEFA',
-        borderTopLeftRadius: 50,
-        borderTopRightRadius: 50,
-        marginBottom: -50,
     },
-    inputWrapper: {
-        width: '85%',
-        alignSelf: 'center',
-    },
-    inputLabel: {
-        color: 'white',
-        fontSize: 16,
-        marginBottom: 8,
-        marginLeft: 4,
+    cardInner: {
+        width: '100%',
+        alignItems: 'center',
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: 30,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 25,
         paddingHorizontal: 20,
-        paddingVertical: Platform.OS === 'ios' ? 15 : 12,
-        marginBottom: 25,
+        paddingVertical: Platform.OS === 'ios' ? 16 : 13,
+        marginBottom: 20,
         width: '100%',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.7)',
     },
     icon: {
         marginRight: 10,
@@ -196,28 +278,35 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     resetButton: {
-        backgroundColor: '#3b79b8',
-        paddingVertical: 15,
+        backgroundColor: '#00C2FF',
+        paddingVertical: 16,
         borderRadius: 30,
-        width: '85%',
+        width: '100%',
         alignItems: 'center',
         marginBottom: 20,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-        elevation: 5,
+        shadowColor: "#00C2FF",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        elevation: 6,
     },
     resetButtonText: {
         color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontWeight: '800',
+        letterSpacing: 0.3,
+        textShadowColor: 'rgba(0, 40, 95, 0.35)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
     },
     signInLink: {
-        marginTop: 10,
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '500',
-        textDecorationLine: 'underline',
+        color: '#0284C7',
+        fontSize: 15,
+        fontWeight: '700',
     },
 });

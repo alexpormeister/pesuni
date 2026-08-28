@@ -18,18 +18,23 @@ const LocationDisplay: React.FC<LocationDisplayProps> = ({ onLocationPress }) =>
     const fetchAddress = async () => {
         try {
             setLoading(true);
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user;
 
             if (user) {
                 const { data, error } = await supabase
                     .from('profiles')
                     .select('address')
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (!error && data) {
                     setAddress(data.address);
+                } else {
+                    setAddress(null);
                 }
+            } else {
+                setAddress(null);
             }
         } catch (error) {
             console.error('Error fetching address:', error);

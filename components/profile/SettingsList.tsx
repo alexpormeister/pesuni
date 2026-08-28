@@ -1,4 +1,4 @@
-import { FontAwesome5 } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -6,7 +6,10 @@ type SettingItem = {
     id: string;
     label: string;
     icon: string;
+    iconBg?: string;
+    iconColor?: string;
     onPress: () => void;
+    badge?: number | null;
 };
 
 interface SettingsListProps {
@@ -17,22 +20,41 @@ interface SettingsListProps {
 const SettingsList: React.FC<SettingsListProps> = ({ title, items }) => {
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>{title}</Text>
-            <View style={styles.listContainer}>
-                {items.map((item, index) => (
-                    <TouchableOpacity
-                        key={item.id}
-                        style={[
-                            styles.itemRow,
-                            index === items.length - 1 && styles.lastItemRow
-                        ]}
-                        onPress={item.onPress}
-                    >
-                        <FontAwesome5 name={item.icon} size={22} color="#00c2ff" style={styles.icon} />
-                        <Text style={styles.itemText}>{item.label}</Text>
-                        <FontAwesome5 name="chevron-right" size={16} color="#C7C7CC" />
-                    </TouchableOpacity>
-                ))}
+            <Text style={styles.sectionTitle}>{title}</Text>
+            <View style={styles.listCard}>
+                {items.map((item, index) => {
+                    const isLast = index === items.length - 1;
+                    return (
+                        <TouchableOpacity
+                            key={item.id}
+                            style={[
+                                styles.itemRow,
+                                isLast && styles.lastItemRow
+                            ]}
+                            activeOpacity={0.7}
+                            onPress={item.onPress}
+                        >
+                            <View style={[styles.iconBox, { backgroundColor: item.iconBg || '#F0F9FF' }]}>
+                                <FontAwesome5
+                                    name={item.icon}
+                                    size={16}
+                                    color={item.iconColor || '#0284C7'}
+                                />
+                            </View>
+
+                            <Text style={styles.itemText}>{item.label}</Text>
+
+                            {/* BADGE JOS ON LUKEMATTOMIA VIESTEJÄ */}
+                            {Boolean(item.badge && item.badge > 0) && (
+                                <View style={styles.unreadBadge}>
+                                    <Text style={styles.unreadBadgeText}>{item.badge}</Text>
+                                </View>
+                            )}
+
+                            <Feather name="chevron-right" size={18} color="#CBD5E1" />
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
         </View>
     );
@@ -41,28 +63,29 @@ const SettingsList: React.FC<SettingsListProps> = ({ title, items }) => {
 const styles = StyleSheet.create({
     container: {
         width: '100%',
-        paddingHorizontal: 15,
-        marginVertical: 10,
-        marginBottom: 70,
+        paddingHorizontal: 16,
+        marginTop: 14,
+        marginBottom: 10,
     },
-    title: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#8A8A8A',
-        marginBottom: 8,
-        marginLeft: 5,
+    sectionTitle: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#64748B',
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+        marginBottom: 10,
+        marginLeft: 4,
     },
-    listContainer: {
+    listCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 15,
+        borderRadius: 24,
         overflow: 'hidden',
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 2.22,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
         elevation: 3,
     },
     itemRow: {
@@ -71,21 +94,36 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
-
+        borderBottomColor: '#F8FAFC',
     },
     lastItemRow: {
         borderBottomWidth: 0,
     },
-    icon: {
-        width: 30,
-        textAlign: 'center',
+    iconBox: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
     },
     itemText: {
         flex: 1,
-        marginLeft: 15,
-        fontSize: 17,
-        color: '#000000',
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1A1B32',
+    },
+    unreadBadge: {
+        backgroundColor: '#FF3B30',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        marginRight: 8,
+    },
+    unreadBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '800',
     },
 });
 

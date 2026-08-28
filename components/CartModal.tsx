@@ -1,34 +1,41 @@
 import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+    Alert,
     FlatList,
     Modal,
     Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
+import { fetchActiveServiceAreas, matchAddressServiceArea } from '../lib/serviceAreas';
+import { calculateOrderPricing, useSystemSettings } from '../lib/systemSettings';
 import {
     CartItem,
     decrementQuantity,
     incrementQuantity,
     removeFromCart,
     selectCartItems,
-    selectCartTotalPrice
+    selectCartTotalPrice,
 } from '../redux/cartSlice';
+import { selectUserProfile } from '../redux/profileSlice';
 
 const COLORS = {
-    primary: '#00AEEF', // Logon kirkas sininen
-    secondary: '#E6F7FF', // Erittäin vaalean sininen taustoille
-    white: '#ffffff',
-    dark: '#1A1A1A', // Pehmeämpi musta
-    lightGray: '#F2F2F7',
-    textGray: '#8E8E93',
-    red: '#FF3B30',
+    primary: '#00C2FF',
+    primaryLight: '#E0F2FE',
+    white: '#FFFFFF',
+    darkText: '#0F172A',
+    textGray: '#64748B',
+    background: '#F8FAFC',
+    cardBorder: '#F1F5F9',
+    red: '#EF4444',
+    green: '#10B981',
 };
 
 interface CartModalProps {
@@ -40,49 +47,106 @@ const CartModal: React.FC<CartModalProps> = ({ isVisible, onClose }) => {
     const router = useRouter();
     const dispatch = useDispatch();
     const cartItems = useSelector(selectCartItems);
-    const totalPrice = useSelector(selectCartTotalPrice);
+    const rawTotalPrice = useSelector(selectCartTotalPrice);
+    const userProfile = useSelector(selectUserProfile);
+    const settings = useSystemSettings();
 
-    const handleCheckout = () => {
+    const [serviceAreas, setServiceAreas] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (isVisible) {
+            fetchActiveServiceAreas().then(setServiceAreas);
+        }
+    }, [isVisible]);
+
+    const serviceAreaMatch = useMemo(() => {
+        return matchAddressServiceArea(userProfile?.address, serviceAreas);
+    }, [userProfile?.address, serviceAreas]);
+
+    const deliveryFee = serviceAreaMatch.deliveryFee || 0;
+
+    const pricing = calculateOrderPricing({
+        itemsTotal: rawTotalPrice,
+        serviceFee: settings.service_fee,
+        deliveryFee: deliveryFee,
+        vatRate: settings.vat_rate,
+    });
+
+    const handleCheckout = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        const activeAreas = await fetchActiveServiceAreas();
+        const match = matchAddressServiceArea(userProfile?.address, activeAreas);
+
+        if (!userProfile?.address) {
+            Alert.alert(
+                "Toimitusosoite puuttuu",
+                "Määritä toimitusosoitteesi ennen kassalle siirtymistä.",
+                [
+                    { text: "Peruuta", style: "cancel" },
+                    { text: "Aseta osoite", onPress: () => { onClose(); router.push('/general/personal-data'); } }
+                ]
+            );
+            return;
+        }
+
+        if (!match.isSupported) {
+            Alert.alert(
+                "Toimitusalueen ulkopuolella",
+                `Emme vielä valitettavasti toimi osoitteesi alueella (${userProfile.address}). Toimimme alueilla: ${match.activeCities.join(', ')}.`,
+                [
+                    { text: "Sulje", style: "cancel" },
+                    { text: "Päivitä osoite", onPress: () => { onClose(); router.push('/general/personal-data'); } }
+                ]
+            );
+            return;
+        }
+
         onClose();
-        router.push("/checkout/checkout");
+        router.push("/checkout");
     };
 
     const renderItem = ({ item }: { item: CartItem }) => (
         <View style={styles.cartItem}>
             <View style={styles.itemDetails}>
                 <Text style={styles.itemTitle} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.itemPrice}>{(item.price * item.quantity).toFixed(2)} €</Text>
-                <Text style={styles.itemSinglePrice}>{item.price.toFixed(2)} € / kpl</Text>
+                <View style={styles.priceRow}>
+                    <Text style={styles.itemPrice}>{(item.price * item.quantity).toFixed(2)} €</Text>
+                    <Text style={styles.itemSinglePrice}>({item.price.toFixed(2)} € / kpl)</Text>
+                </View>
             </View>
 
-            <View style={styles.quantityWrapper}>
-                <View style={styles.quantityContainer}>
-                    <TouchableOpacity
-                        style={styles.qtyButton}
-                        onPress={() => {
-                            if (item.quantity === 1) {
-                                dispatch(removeFromCart(item.id));
-                            } else {
-                                dispatch(decrementQuantity(item.id));
-                            }
-                        }}
-                    >
-                        <Feather
-                            name={item.quantity === 1 ? "trash-2" : "minus"}
-                            size={18}
-                            color={item.quantity === 1 ? COLORS.red : COLORS.dark}
-                        />
-                    </TouchableOpacity>
+            <View style={styles.quantityContainer}>
+                <TouchableOpacity
+                    style={styles.qtyButton}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        if (item.quantity === 1) {
+                            dispatch(removeFromCart(item.id));
+                        } else {
+                            dispatch(decrementQuantity(item.id));
+                        }
+                    }}
+                >
+                    <Feather
+                        name={item.quantity === 1 ? "trash-2" : "minus"}
+                        size={15}
+                        color={item.quantity === 1 ? COLORS.red : COLORS.darkText}
+                    />
+                </TouchableOpacity>
 
-                    <Text style={styles.qtyText}>{item.quantity}</Text>
+                <Text style={styles.qtyText}>{item.quantity}</Text>
 
-                    <TouchableOpacity
-                        style={styles.qtyButton}
-                        onPress={() => dispatch(incrementQuantity(item.id))}
-                    >
-                        <Feather name="plus" size={18} color={COLORS.dark} />
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                    style={styles.qtyButton}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        dispatch(incrementQuantity(item.id));
+                    }}
+                >
+                    <Feather name="plus" size={15} color={COLORS.darkText} />
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -95,15 +159,19 @@ const CartModal: React.FC<CartModalProps> = ({ isVisible, onClose }) => {
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
-                <SafeAreaView style={styles.modalContainer}>
+                <SafeAreaView style={styles.modalContainer} edges={['bottom']}>
                     <View style={styles.modalContent}>
-                        {/* Vetokahva modaalin yläreunassa (visual cue) */}
                         <View style={styles.pullBar} />
 
                         <View style={styles.header}>
-                            <Text style={styles.headerTitle}>Ostoskori</Text>
-                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                                <Feather name="x" size={24} color={COLORS.dark} />
+                            <View>
+                                <Text style={styles.headerTitle}>Ostoskori</Text>
+                                <Text style={styles.headerSubtitle}>
+                                    {cartItems.length} {cartItems.length === 1 ? 'tuote valittuna' : 'tuotetta valittuna'}
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
+                                <Feather name="x" size={20} color={COLORS.darkText} />
                             </TouchableOpacity>
                         </View>
 
@@ -116,11 +184,12 @@ const CartModal: React.FC<CartModalProps> = ({ isVisible, onClose }) => {
                             ListEmptyComponent={
                                 <View style={styles.emptyContainer}>
                                     <View style={styles.emptyIconCircle}>
-                                        <Feather name="shopping-bag" size={40} color={COLORS.textGray} />
+                                        <Feather name="shopping-bag" size={36} color={COLORS.primary} />
                                     </View>
-                                    <Text style={styles.emptyText}>Ostoskorisi on tyhjä</Text>
-                                    <TouchableOpacity style={styles.continueShoppingButton} onPress={onClose}>
-                                        <Text style={styles.continueShoppingText}>Löydä pestävää</Text>
+                                    <Text style={styles.emptyTitle}>Ostoskorisi on tyhjä</Text>
+                                    <Text style={styles.emptyDesc}>Valitse puhtaita palveluita ja lisää ne koriin.</Text>
+                                    <TouchableOpacity style={styles.continueShoppingButton} onPress={onClose} activeOpacity={0.8}>
+                                        <Text style={styles.continueShoppingText}>Selaa palveluita</Text>
                                     </TouchableOpacity>
                                 </View>
                             }
@@ -128,17 +197,40 @@ const CartModal: React.FC<CartModalProps> = ({ isVisible, onClose }) => {
 
                         {cartItems.length > 0 && (
                             <View style={styles.footer}>
-                                <View style={styles.totalRow}>
-                                    <Text style={styles.totalLabel}>Yhteensä</Text>
-                                    <Text style={styles.totalPriceText}>{totalPrice.toFixed(2)} €</Text>
+                                <View style={styles.priceBreakdownBox}>
+                                    <View style={styles.breakdownRow}>
+                                        <Text style={styles.breakdownLabel}>Tuotteet</Text>
+                                        <Text style={styles.breakdownValue}>{pricing.itemsTotal.toFixed(2)} €</Text>
+                                    </View>
+                                    <View style={styles.breakdownRow}>
+                                        <Text style={styles.breakdownLabel}>Toimitusmaksu</Text>
+                                        <Text style={[styles.breakdownValue, pricing.deliveryFee === 0 && styles.freeText]}>
+                                            {pricing.deliveryFee > 0 ? `${pricing.deliveryFee.toFixed(2)} €` : 'Ilmainen'}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.breakdownRow}>
+                                        <Text style={styles.breakdownLabel}>Palvelumaksu</Text>
+                                        <Text style={styles.breakdownValue}>{pricing.serviceFee.toFixed(2)} €</Text>
+                                    </View>
                                 </View>
+
+                                <View style={styles.totalRow}>
+                                    <View>
+                                        <Text style={styles.totalLabel}>Yhteensä</Text>
+                                        <Text style={styles.vatText}>
+                                            (josta ALV {pricing.vatRate.toString().replace('.', ',')}%: {pricing.vatAmount.toFixed(2)} €)
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.totalPriceText}>{pricing.finalTotal.toFixed(2)} €</Text>
+                                </View>
+
                                 <TouchableOpacity
                                     style={styles.checkoutButton}
                                     onPress={handleCheckout}
-                                    activeOpacity={0.8}
+                                    activeOpacity={0.85}
                                 >
                                     <Text style={styles.checkoutButtonText}>Siirry kassalle</Text>
-                                    <Feather name="arrow-right" size={20} color={COLORS.white} style={{ marginLeft: 8 }} />
+                                    <Feather name="arrow-right" size={18} color={COLORS.white} style={{ marginLeft: 8 }} />
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -152,28 +244,28 @@ const CartModal: React.FC<CartModalProps> = ({ isVisible, onClose }) => {
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.4)',
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
     },
     modalContainer: {
         flex: 1,
         justifyContent: 'flex-end',
     },
     modalContent: {
-        height: '85%',
-        backgroundColor: '#F8F9FA',
+        maxHeight: '90%',
+        backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: -4 },
+        shadowOffset: { width: 0, height: -6 },
         shadowOpacity: 0.1,
-        shadowRadius: 10,
+        shadowRadius: 16,
         elevation: 20,
     },
     pullBar: {
-        width: 40,
-        height: 5,
-        backgroundColor: '#E0E0E0',
-        borderRadius: 3,
+        width: 36,
+        height: 4,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 2,
         alignSelf: 'center',
         marginTop: 12,
     },
@@ -182,165 +274,216 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 24,
-        paddingVertical: 20,
+        paddingTop: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F8FAFC',
     },
     headerTitle: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: COLORS.dark,
+        fontSize: 22,
+        fontWeight: '900',
+        color: COLORS.darkText,
         letterSpacing: -0.5,
     },
-    closeButton: {
-        backgroundColor: COLORS.lightGray,
-        padding: 8,
-        borderRadius: 20,
-    },
-    listContent: {
-        padding: 20,
-        paddingBottom: 40,
-    },
-    cartItem: {
-        flexDirection: 'row',
-        backgroundColor: COLORS.white,
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: 16,
-        alignItems: 'center',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.05,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 3,
-            },
-        }),
-    },
-    itemDetails: {
-        flex: 1,
-        paddingRight: 10,
-    },
-    itemTitle: {
-        fontSize: 17,
-        fontWeight: '600',
-        color: COLORS.dark,
-        marginBottom: 2,
-    },
-    itemPrice: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: COLORS.primary,
-    },
-    itemSinglePrice: {
+    headerSubtitle: {
         fontSize: 13,
         color: COLORS.textGray,
         marginTop: 2,
+        fontWeight: '500',
     },
-    quantityWrapper: {
-        alignItems: 'flex-end',
+    closeButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F1F5F9',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    listContent: {
+        padding: 20,
+        paddingBottom: 16,
+    },
+    cartItem: {
+        flexDirection: 'row',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 22,
+        padding: 16,
+        marginBottom: 12,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.cardBorder,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    itemDetails: {
+        flex: 1,
+        paddingRight: 12,
+    },
+    itemTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: COLORS.darkText,
+        marginBottom: 4,
+    },
+    priceRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    itemPrice: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#0284C7',
+        marginRight: 6,
+    },
+    itemSinglePrice: {
+        fontSize: 12,
+        color: COLORS.textGray,
+        fontWeight: '500',
     },
     quantityContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.lightGray,
-        borderRadius: 14,
-        padding: 4,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 16,
+        padding: 3,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
     qtyButton: {
         width: 32,
         height: 32,
-        backgroundColor: COLORS.white,
-        borderRadius: 10,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
         shadowRadius: 2,
         elevation: 1,
     },
     qtyText: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 14,
+        fontWeight: '800',
         marginHorizontal: 12,
-        color: COLORS.dark,
-        minWidth: 15,
+        color: COLORS.darkText,
+        minWidth: 16,
         textAlign: 'center',
     },
     footer: {
-        padding: 24,
-        paddingTop: 16,
-        backgroundColor: COLORS.white,
+        padding: 20,
+        backgroundColor: '#FFFFFF',
         borderTopWidth: 1,
-        borderTopColor: COLORS.lightGray,
-        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+        borderTopColor: '#F1F5F9',
+        paddingBottom: Platform.OS === 'ios' ? 28 : 20,
+    },
+    priceBreakdownBox: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    breakdownRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 3,
+    },
+    breakdownLabel: {
+        fontSize: 13,
+        color: COLORS.textGray,
+        fontWeight: '500',
+    },
+    breakdownValue: {
+        fontSize: 13,
+        color: COLORS.darkText,
+        fontWeight: '700',
+    },
+    freeText: {
+        color: COLORS.green,
+        fontWeight: '700',
     },
     totalRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        marginBottom: 20,
+        alignItems: 'center',
+        marginBottom: 14,
     },
     totalLabel: {
-        fontSize: 16,
+        fontSize: 15,
+        color: COLORS.darkText,
+        fontWeight: '700',
+    },
+    vatText: {
+        fontSize: 11,
         color: COLORS.textGray,
-        fontWeight: '500',
+        marginTop: 2,
     },
     totalPriceText: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: COLORS.dark,
+        fontSize: 26,
+        fontWeight: '900',
+        color: COLORS.darkText,
+        letterSpacing: -0.5,
     },
     checkoutButton: {
         backgroundColor: COLORS.primary,
         flexDirection: 'row',
-        height: 60,
+        height: 56,
         borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.28,
         shadowRadius: 10,
-        elevation: 8,
+        elevation: 4,
     },
     checkoutButtonText: {
         color: COLORS.white,
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 16,
+        fontWeight: '800',
     },
     emptyContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 60,
+        paddingVertical: 50,
+        paddingHorizontal: 20,
     },
     emptyIconCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: COLORS.lightGray,
+        width: 72,
+        height: 72,
+        borderRadius: 24,
+        backgroundColor: COLORS.primaryLight,
         justifyContent: 'center',
         alignItems: 'center',
+        marginBottom: 16,
+    },
+    emptyTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: COLORS.darkText,
+        marginBottom: 6,
+    },
+    emptyDesc: {
+        fontSize: 13,
+        color: COLORS.textGray,
+        textAlign: 'center',
         marginBottom: 20,
     },
-    emptyText: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: COLORS.dark,
-        marginBottom: 8,
-    },
     continueShoppingButton: {
-        marginTop: 10,
         paddingVertical: 12,
-        paddingHorizontal: 28,
+        paddingHorizontal: 24,
         borderRadius: 14,
-        backgroundColor: COLORS.secondary,
+        backgroundColor: '#F1F5F9',
     },
     continueShoppingText: {
-        color: COLORS.primary,
-        fontSize: 16,
+        color: '#0284C7',
+        fontSize: 14,
         fontWeight: '700',
     },
 });
