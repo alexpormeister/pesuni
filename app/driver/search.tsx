@@ -364,7 +364,11 @@ export default function DriverSearchScreen() {
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const currentUserId = session?.user?.id;
+            let currentUserId = session?.user?.id;
+            if (!currentUserId) {
+                const { data: { user } } = await supabase.auth.getUser();
+                currentUserId = user?.id;
+            }
 
             if (!currentUserId) {
                 Alert.alert('Kirjaudu sisään', 'Kirjaudu sisään ottaaksesi keikan.');
@@ -374,53 +378,70 @@ export default function DriverSearchScreen() {
 
             const rawId = gig.id;
             const orderId = gig.rawTask?.order_id || (gig.rawTask?.id ? String(gig.rawTask.id) : gig.id);
+            const nowIso = new Date().toISOString();
+
+            console.log('[CLAIM_GIG] Claiming gig:', { rawId, orderId, currentUserId });
 
             // 1. Kokeillaan ensin RPC-funktiota
             const { data: rpcRes, error: rpcErr } = await supabase.rpc('driver_claim_task', {
                 p_task_id: rawId,
             });
 
+            console.log('[CLAIM_GIG] RPC result:', { rpcRes, rpcErr });
+
             if (!rpcErr && rpcRes && rpcRes.success) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
                 setSelectedGig(null);
                 Alert.alert('Keikka vastaanotettu! 🎉', 'Keikka on nyt sinulla ja löytyy Omat ajot -sivulta.');
-                fetchGigs();
+                await fetchGigs();
                 return;
             }
 
             // 2. Päivitetään delivery_tasks
-            const { data: updatedTasks } = await supabase
+            const { data: updatedTasks, error: taskUpdateErr } = await supabase
                 .from('delivery_tasks')
-                .update({ driver_id: currentUserId, status: 'assigned', updated_at: new Date().toISOString() })
+                .update({ driver_id: currentUserId, status: 'assigned', updated_at: nowIso })
                 .or(`id.eq.${rawId},order_id.eq.${orderId}`)
                 .select();
 
+            console.log('[CLAIM_GIG] Task update result:', { updatedTasks, taskUpdateErr });
+
             // 3. Päivitetään orders
-            await supabase
+            const { error: orderUpdateErr } = await supabase
                 .from('orders')
-                .update({ driver_id: currentUserId, updated_at: new Date().toISOString() })
+                .update({ driver_id: currentUserId, updated_at: nowIso })
                 .eq('id', orderId);
+
+            console.log('[CLAIM_GIG] Order update result:', { orderUpdateErr });
+
+            if (taskUpdateErr && orderUpdateErr) {
+                throw new Error(taskUpdateErr?.message || orderUpdateErr?.message || 'Keikan tallentaminen tietokantaan epäonnistui.');
+            }
 
             // Jos delivery_tasks -riviä ei ollut vielä olemassa tälle tilaukselle, luodaan se
             if (!updatedTasks || updatedTasks.length === 0) {
-                await supabase.from('delivery_tasks').insert({
+                const { error: insertErr } = await supabase.from('delivery_tasks').insert({
                     order_id: orderId,
                     driver_id: currentUserId,
                     task_type: gig.taskType || 'pickup',
                     status: 'assigned',
                     pickup_address: gig.pickupStreet + (gig.pickupCity ? `, ${gig.pickupCity}` : ''),
                     delivery_address: gig.deliveryStreet + (gig.deliveryCity ? `, ${gig.deliveryCity}` : ''),
-                    scheduled_date: gig.rawTask?.pickup_date || gig.rawTask?.scheduled_date || new Date().toISOString().split('T')[0],
+                    scheduled_date: gig.rawTask?.pickup_date || gig.rawTask?.scheduled_date || nowIso.split('T')[0],
                     scheduled_time: gig.rawTask?.pickup_time || gig.rawTask?.scheduled_time || '10:00',
                     driver_payout: gig.payout || 19,
                 });
+                if (insertErr) {
+                    console.log('[CLAIM_GIG] Insert task notice:', insertErr);
+                }
             }
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             setSelectedGig(null);
             Alert.alert('Keikka vastaanotettu! 🎉', 'Keikka on nyt sinulla ja löytyy Omat ajot -sivulta.');
-            fetchGigs();
+            await fetchGigs();
         } catch (err: any) {
+            console.error('[CLAIM_GIG] ERROR:', err);
             Alert.alert('Virhe', err?.message || 'Keikan ottaminen epäonnistui.');
         } finally {
             setIsClaiming(false);

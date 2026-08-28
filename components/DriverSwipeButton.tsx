@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
@@ -13,8 +14,8 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BUTTON_WIDTH = SCREEN_WIDTH - 48;
-const BUTTON_HEIGHT = 60;
-const THUMB_SIZE = 52;
+const BUTTON_HEIGHT = 58;
+const THUMB_SIZE = 50;
 const SWIPE_MAX = BUTTON_WIDTH - THUMB_SIZE - 8;
 
 interface DriverSwipeButtonProps {
@@ -33,6 +34,20 @@ export const DriverSwipeButton: React.FC<DriverSwipeButtonProps> = ({
     const panX = useRef(new Animated.Value(0)).current;
     const [isConfirmed, setIsConfirmed] = useState(false);
     const hasTriggeredRef = useRef(false);
+
+    // Palautetaan nappi alkuasentoon jos lataus päättyy
+    useEffect(() => {
+        if (!loading) {
+            hasTriggeredRef.current = false;
+            setIsConfirmed(false);
+            Animated.spring(panX, {
+                toValue: 0,
+                useNativeDriver: true,
+                speed: 18,
+                bounciness: 4,
+            }).start();
+        }
+    }, [loading]);
 
     const panResponder = useRef(
         PanResponder.create({
@@ -101,61 +116,71 @@ export const DriverSwipeButton: React.FC<DriverSwipeButtonProps> = ({
     });
 
     return (
-        <View style={[styles.container, (disabled || loading) && styles.disabled]}>
-            {/* Taustateksti ja ohje */}
-            <Animated.View
-                style={[
-                    styles.textWrapper,
-                    {
-                        opacity: textOpacity,
-                        transform: [{ translateX: textTranslateX }],
-                    },
-                ]}
+        <View style={[styles.outerWrapper, (disabled || loading) && styles.disabled]}>
+            <LinearGradient
+                colors={['#00C2FF', '#0284C7']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.gradientContainer}
             >
-                <Text style={styles.buttonText}>
-                    {loading ? 'Vahvistetaan...' : `Pyyhkäise ottaaksesi keikan`}
-                </Text>
-            </Animated.View>
+                {/* Taustateksti ja ohje */}
+                <Animated.View
+                    style={[
+                        styles.textWrapper,
+                        {
+                            opacity: textOpacity,
+                            transform: [{ translateX: textTranslateX }],
+                        },
+                    ]}
+                >
+                    <Text style={styles.buttonText}>
+                        {loading ? 'Vahvistetaan...' : 'Pyyhkäise ottaaksesi keikan'}
+                    </Text>
+                </Animated.View>
 
-            {/* Liu'utettava nappi */}
-            <Animated.View
-                {...panResponder.panHandlers}
-                style={[
-                    styles.thumb,
-                    isConfirmed && styles.thumbConfirmed,
-                    {
-                        transform: [{ translateX: panX }],
-                    },
-                ]}
-            >
-                {loading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : isConfirmed ? (
-                    <Feather name="check" size={24} color="#FFFFFF" />
-                ) : (
-                    <Feather name="chevrons-right" size={24} color="#FFFFFF" />
-                )}
-            </Animated.View>
+                {/* Liu'utettava nappi */}
+                <Animated.View
+                    {...panResponder.panHandlers}
+                    style={[
+                        styles.thumb,
+                        isConfirmed && styles.thumbConfirmed,
+                        {
+                            transform: [{ translateX: panX }],
+                        },
+                    ]}
+                >
+                    {loading ? (
+                        <ActivityIndicator size="small" color="#0284C7" />
+                    ) : isConfirmed ? (
+                        <Feather name="check" size={24} color="#FFFFFF" />
+                    ) : (
+                        <Feather name="chevrons-right" size={24} color="#0284C7" />
+                    )}
+                </Animated.View>
+            </LinearGradient>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    outerWrapper: {
         width: BUTTON_WIDTH,
         height: BUTTON_HEIGHT,
-        backgroundColor: '#0F172A',
+        borderRadius: BUTTON_HEIGHT / 2,
+        shadowColor: '#0284C7',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 6,
+        alignSelf: 'center',
+        marginVertical: 8,
+    },
+    gradientContainer: {
+        flex: 1,
         borderRadius: BUTTON_HEIGHT / 2,
         padding: 4,
         justifyContent: 'center',
         position: 'relative',
-        shadowColor: '#00C2FF',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-        elevation: 4,
-        alignSelf: 'center',
-        marginVertical: 6,
     },
     disabled: {
         opacity: 0.6,
@@ -168,22 +193,22 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '800',
         letterSpacing: 0.3,
     },
     thumb: {
         width: THUMB_SIZE,
         height: THUMB_SIZE,
         borderRadius: THUMB_SIZE / 2,
-        backgroundColor: '#00C2FF',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 4,
     },
     thumbConfirmed: {
         backgroundColor: '#10B981',
