@@ -276,13 +276,13 @@ export default function DriverDrivesScreen() {
                     const orderTracking = (ordObj.tracking_status || '').toUpperCase();
                     const ordActualPickup = ordObj.actual_pickup_time;
                     const ordActualReturn = ordObj.actual_return_time;
-                    const isCompleted = t.status === 'completed' || t.status === 'delivered' || orderStatus === 'delivered' || orderTracking === 'COMPLETED';
+                    const isCompleted = t.status === 'completed' || t.status === 'delivered' || orderStatus === 'delivered' || orderTracking === 'COMPLETED' || (isPickup && orderStatus === 'washing');
 
                     let taskStatus = t.status || 'assigned';
                     if (isPickup) {
-                        if (t.status === 'completed' || t.status === 'delivered') {
+                        if (t.status === 'completed' || t.status === 'delivered' || orderStatus === 'washing') {
                             taskStatus = 'completed';
-                        } else if (orderStatus === 'washing' || orderTracking === 'PICKED_UP' || orderTracking === 'WASHING' || t.pickup_weight_kg) {
+                        } else if (orderTracking === 'PICKED_UP' || t.pickup_weight_kg || (t.pickup_photos && t.pickup_photos.length > 0)) {
                             taskStatus = 'in_transit_to_laundry';
                         } else if (orderStatus === 'picking_up' && (ordActualPickup || t.status === 'arrived_pickup')) {
                             taskStatus = 'arrived_pickup';
@@ -424,7 +424,7 @@ export default function DriverDrivesScreen() {
 
                     const orderStatus = (o.status || '').toLowerCase();
                     const orderTracking = (o.tracking_status || '').toUpperCase();
-                    const isCompleted = orderStatus === 'delivered' || orderStatus === 'completed' || orderTracking === 'COMPLETED';
+                    const isCompleted = orderStatus === 'delivered' || orderStatus === 'completed' || orderTracking === 'COMPLETED' || orderStatus === 'washing';
                     const orderDateOnly = normalizeDateStr(o.pickup_date);
 
                     let taskStatus = 'assigned';
@@ -434,7 +434,7 @@ export default function DriverDrivesScreen() {
                         taskStatus = 'arrived_pickup';
                     } else if (orderStatus === 'picking_up') {
                         taskStatus = 'picking_up';
-                    } else if (orderStatus === 'washing' || orderTracking === 'PICKED_UP' || orderTracking === 'WASHING') {
+                    } else if (orderTracking === 'PICKED_UP' || o.pickup_weight_kg || (o.pickup_photos && o.pickup_photos.length > 0)) {
                         taskStatus = 'in_transit_to_laundry';
                     } else if ((orderStatus === 'returning' || orderTracking === 'OUT_FOR_DELIVERY') && o.actual_return_time) {
                         taskStatus = 'arrived_delivery';
@@ -949,11 +949,11 @@ export default function DriverDrivesScreen() {
                         try {
                             const nowIso = new Date().toISOString();
 
-                            if (drive.id) {
+                            if (drive.id || targetOrderId) {
                                 const dtRes = await supabase
                                     .from('delivery_tasks')
                                     .update({ status: 'completed', completed_at: nowIso, updated_at: nowIso })
-                                    .eq('id', drive.id)
+                                    .or(`id.eq.${drive.id},order_id.eq.${targetOrderId}`)
                                     .select();
                                 console.log('[DRIVE_LAUNDRY_DELIVERED] delivery_tasks result:', { status: dtRes.status, error: dtRes.error });
                             }
