@@ -226,8 +226,13 @@ export default function DriverSearchScreen() {
                 .is('driver_id', null)
                 .order('scheduled_date', { ascending: true });
 
-            if (!taskError && taskData && taskData.length > 0) {
-                const formatted: GigItem[] = taskData.map((t: any) => {
+            const validTasks = (taskData || []).filter((t: any) => {
+                const ordStatus = (t.orders?.status || '').toLowerCase();
+                return ordStatus !== 'cancelled' && ordStatus !== 'rejected';
+            });
+
+            if (!taskError && validTasks.length > 0) {
+                const formatted: GigItem[] = validTasks.map((t: any) => {
                     const isPickup = t.task_type === 'pickup';
                     const orderDate = isPickup ? t.orders?.pickup_date : t.orders?.return_date;
                     const dateKey = formatDatePill(t.scheduled_date || orderDate);
@@ -283,11 +288,12 @@ export default function DriverSearchScreen() {
                 return;
             }
 
-            // 2. Fallback: Haetaan orders-taulusta vapaat tilaukset
+            // 2. Fallback: Haetaan orders-taulusta vapaat aktiiviset tilaukset
             const { data: orderData, error: orderError } = await supabase
                 .from('orders')
                 .select('*')
                 .is('driver_id', null)
+                .in('status', ['pending', 'accepted'])
                 .order('created_at', { ascending: false });
 
             if (!orderError && orderData && orderData.length > 0) {
