@@ -228,39 +228,19 @@ export default function DriverDrivesScreen() {
             const laundryCity = laundryData?.city || parsedLaundry.city || 'Espoo';
             const laundryFullDisplay = `${laundryName}, ${laundryAddress}`;
 
-            console.log('[DRIVE_FETCH] Fetching drives for user:', currentUserId);
-
             // 1. Haetaan delivery_tasks -taulusta
-            const { data: taskData, error: taskDataError } = await supabase
+            const { data: taskData } = await supabase
                 .from('delivery_tasks')
                 .select('*, orders(*)')
                 .eq('driver_id', currentUserId)
                 .order('scheduled_date', { ascending: true });
 
-            if (taskDataError) {
-                console.error('[DRIVE_FETCH] taskData error:', taskDataError);
-            } else {
-                console.log('[DRIVE_FETCH] taskData loaded:', taskData?.map((t: any) => ({
-                    id: t.id,
-                    type: t.task_type,
-                    status: t.status,
-                    orderStatus: t.orders?.status,
-                    date: t.scheduled_date || t.orders?.pickup_date
-                })));
-            }
-
             // 2. Haetaan orders -taulusta (suorat tilaukset)
-            const { data: orderData, error: orderDataError } = await supabase
+            const { data: orderData } = await supabase
                 .from('orders')
                 .select('*')
                 .eq('driver_id', currentUserId)
                 .order('created_at', { ascending: false });
-
-            if (orderDataError) {
-                console.error('[DRIVE_FETCH] orderData error:', orderDataError);
-            } else {
-                console.log('[DRIVE_FETCH] orderData count:', orderData?.length);
-            }
 
             const allDrives: DriverDrive[] = [];
             const seenOrderIds = new Set<string>();
@@ -304,14 +284,6 @@ export default function DriverDrivesScreen() {
                             taskStatus = 'assigned';
                         }
                     }
-
-                    console.log('[DRIVE_FETCH] Processed drive:', {
-                        taskId: t.id,
-                        taskType: t.task_type,
-                        orderStatus,
-                        ordActualPickup,
-                        computedTaskStatus: taskStatus,
-                    });
 
                     // 🏠 Asiakkaan KOKO virallinen osoite (katu + talo + rappu + postinumero + kaupunki)
                     const customerRawAddress = isPickup
@@ -545,7 +517,6 @@ export default function DriverDrivesScreen() {
         if (selectedDrive) {
             const fresh = drives.find(d => d.id === selectedDrive.id);
             if (fresh) {
-                console.log('[DRIVE_SYNC] Modal synced with fresh drive:', { id: fresh.id, status: fresh.status, taskType: fresh.taskType });
                 setSelectedDrive(fresh);
             }
         }
@@ -558,13 +529,6 @@ export default function DriverDrivesScreen() {
         const isPickup = drive.taskType === 'pickup';
         const newStatus = isPickup ? 'picking_up' : 'in_progress';
         const targetOrderId = drive.orderId || drive.id;
-
-        console.log('[DRIVE_START] Starting drive:', {
-            taskId: drive.id,
-            targetOrderId,
-            taskType: drive.taskType,
-            transitionTo: newStatus,
-        });
 
         // Optimistinen päivitys heti
         setDrives(prev => prev.map(d => {
@@ -583,7 +547,7 @@ export default function DriverDrivesScreen() {
             const currentUserId = session?.user?.id;
 
             // 1. Päivitä VAIN tämä kyseinen task
-            const dtUpdate = await supabase
+            await supabase
                 .from('delivery_tasks')
                 .update({
                     status: 'in_progress',
@@ -592,8 +556,6 @@ export default function DriverDrivesScreen() {
                 })
                 .eq('id', drive.id)
                 .select();
-
-            console.log('[DRIVE_START] delivery_tasks result:', { status: dtUpdate.status, error: dtUpdate.error, data: dtUpdate.data });
 
             // 2. Päivitä orders
             if (targetOrderId) {
@@ -606,13 +568,11 @@ export default function DriverDrivesScreen() {
                     ordPayload.tracking_status = 'OUT_FOR_DELIVERY';
                 }
 
-                const ordUpdate = await supabase
+                await supabase
                     .from('orders')
                     .update(ordPayload)
                     .eq('id', targetOrderId)
                     .select();
-
-                console.log('[DRIVE_START] orders result:', { status: ordUpdate.status, error: ordUpdate.error, data: ordUpdate.data });
             }
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -632,13 +592,6 @@ export default function DriverDrivesScreen() {
         const newStatus = isPickup ? 'arrived_pickup' : 'arrived_delivery';
         const targetOrderId = drive.orderId || drive.id;
 
-        console.log('[DRIVE_ARRIVED] Driver arrived at location:', {
-            taskId: drive.id,
-            targetOrderId,
-            taskType: drive.taskType,
-            transitionTo: newStatus,
-        });
-
         // Optimistinen päivitys
         setDrives(prev => prev.map(d => {
             if (d.id === drive.id) {
@@ -656,12 +609,11 @@ export default function DriverDrivesScreen() {
             const currentUserId = session?.user?.id;
 
             if (drive.id) {
-                const dtRes = await supabase
+                await supabase
                     .from('delivery_tasks')
                     .update({ status: 'in_progress', updated_at: nowIso, driver_id: currentUserId })
                     .eq('id', drive.id)
                     .select();
-                console.log('[DRIVE_ARRIVED] delivery_tasks result:', { status: dtRes.status, error: dtRes.error });
             }
 
             if (targetOrderId) {
@@ -678,12 +630,11 @@ export default function DriverDrivesScreen() {
                     ordPayload.actual_return_time = nowIso;
                 }
 
-                const ordRes = await supabase
+                await supabase
                     .from('orders')
                     .update(ordPayload)
                     .eq('id', targetOrderId)
                     .select();
-                console.log('[DRIVE_ARRIVED] orders result:', { status: ordRes.status, error: ordRes.error });
             }
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -878,12 +829,11 @@ export default function DriverDrivesScreen() {
             if (uploadedPhotoUrls.length > 0) taskUpdatePayload.pickup_photos = uploadedPhotoUrls;
 
             if (selectedTaskId) {
-                const dtRes = await supabase
+                await supabase
                     .from('delivery_tasks')
                     .update(taskUpdatePayload)
                     .eq('id', selectedTaskId)
                     .select();
-                console.log('[DRIVE_VERIFY_CONFIRM] delivery_tasks result:', { status: dtRes.status, error: dtRes.error });
             }
 
             const orderUpdatePayload: Record<string, any> = {
@@ -895,12 +845,11 @@ export default function DriverDrivesScreen() {
             if (uploadedPhotoUrls.length > 0) orderUpdatePayload.pickup_photos = uploadedPhotoUrls;
 
             if (targetOrderId) {
-                const ordRes = await supabase
+                await supabase
                     .from('orders')
                     .update(orderUpdatePayload)
                     .eq('id', targetOrderId)
                     .select();
-                console.log('[DRIVE_VERIFY_CONFIRM] orders result:', { status: ordRes.status, error: ordRes.error });
             }
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -930,11 +879,6 @@ export default function DriverDrivesScreen() {
                         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                         const targetOrderId = drive.orderId || drive.id;
 
-                        console.log('[DRIVE_LAUNDRY_DELIVERED] Handing over to laundry:', {
-                            taskId: drive.id,
-                            targetOrderId,
-                        });
-
                         // Optimistinen päivitys
                         setDrives(prev => prev.map(d => {
                             if (d.id === drive.id) {
@@ -950,16 +894,15 @@ export default function DriverDrivesScreen() {
                             const nowIso = new Date().toISOString();
 
                             if (drive.id || targetOrderId) {
-                                const dtRes = await supabase
+                                await supabase
                                     .from('delivery_tasks')
                                     .update({ status: 'completed', completed_at: nowIso, updated_at: nowIso })
                                     .or(`id.eq.${drive.id},order_id.eq.${targetOrderId}`)
                                     .select();
-                                console.log('[DRIVE_LAUNDRY_DELIVERED] delivery_tasks result:', { status: dtRes.status, error: dtRes.error });
                             }
 
                             if (targetOrderId) {
-                                const ordRes = await supabase
+                                await supabase
                                     .from('orders')
                                     .update({
                                         status: 'washing',
@@ -969,7 +912,6 @@ export default function DriverDrivesScreen() {
                                     })
                                     .eq('id', targetOrderId)
                                     .select();
-                                console.log('[DRIVE_LAUNDRY_DELIVERED] orders result:', { status: ordRes.status, error: ordRes.error });
                             }
 
                             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -1000,11 +942,6 @@ export default function DriverDrivesScreen() {
                         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                         const targetOrderId = drive.orderId || drive.id;
 
-                        console.log('[DRIVE_DELIVERY_COMPLETE] Completing customer delivery:', {
-                            taskId: drive.id,
-                            targetOrderId,
-                        });
-
                         // Optimistinen päivitys
                         setDrives(prev => prev.map(d => {
                             if (d.id === drive.id) {
@@ -1020,16 +957,15 @@ export default function DriverDrivesScreen() {
                             const nowIso = new Date().toISOString();
 
                             if (drive.id) {
-                                const dtRes = await supabase
+                                await supabase
                                     .from('delivery_tasks')
                                     .update({ status: 'completed', completed_at: nowIso, updated_at: nowIso })
                                     .eq('id', drive.id)
                                     .select();
-                                console.log('[DRIVE_DELIVERY_COMPLETE] delivery_tasks result:', { status: dtRes.status, error: dtRes.error });
                             }
 
                             if (targetOrderId) {
-                                const ordRes = await supabase
+                                await supabase
                                     .from('orders')
                                     .update({
                                         status: 'delivered',
@@ -1039,7 +975,6 @@ export default function DriverDrivesScreen() {
                                     })
                                     .eq('id', targetOrderId)
                                     .select();
-                                console.log('[DRIVE_DELIVERY_COMPLETE] orders result:', { status: ordRes.status, error: ordRes.error });
                             }
 
                             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});

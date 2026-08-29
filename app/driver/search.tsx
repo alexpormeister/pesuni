@@ -380,14 +380,10 @@ export default function DriverSearchScreen() {
             const orderId = gig.rawTask?.order_id || (gig.rawTask?.id ? String(gig.rawTask.id) : gig.id);
             const nowIso = new Date().toISOString();
 
-            console.log('[CLAIM_GIG] Claiming gig:', { rawId, orderId, currentUserId });
-
             // 1. Kokeillaan ensin RPC-funktiota
             const { data: rpcRes, error: rpcErr } = await supabase.rpc('driver_claim_task', {
                 p_task_id: rawId,
             });
-
-            console.log('[CLAIM_GIG] RPC result:', { rpcRes, rpcErr });
 
             if (!rpcErr && rpcRes && rpcRes.success) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -404,15 +400,11 @@ export default function DriverSearchScreen() {
                 .or(`id.eq.${rawId},order_id.eq.${orderId}`)
                 .select();
 
-            console.log('[CLAIM_GIG] Task update result:', { updatedTasks, taskUpdateErr });
-
             // 3. Päivitetään orders
             const { error: orderUpdateErr } = await supabase
                 .from('orders')
                 .update({ driver_id: currentUserId, updated_at: nowIso })
                 .eq('id', orderId);
-
-            console.log('[CLAIM_GIG] Order update result:', { orderUpdateErr });
 
             if (taskUpdateErr && orderUpdateErr) {
                 throw new Error(taskUpdateErr?.message || orderUpdateErr?.message || 'Keikan tallentaminen tietokantaan epäonnistui.');
@@ -420,7 +412,7 @@ export default function DriverSearchScreen() {
 
             // Jos delivery_tasks -riviä ei ollut vielä olemassa tälle tilaukselle, luodaan se
             if (!updatedTasks || updatedTasks.length === 0) {
-                const { error: insertErr } = await supabase.from('delivery_tasks').insert({
+                await supabase.from('delivery_tasks').insert({
                     order_id: orderId,
                     driver_id: currentUserId,
                     task_type: gig.taskType || 'pickup',
@@ -431,9 +423,6 @@ export default function DriverSearchScreen() {
                     scheduled_time: gig.rawTask?.pickup_time || gig.rawTask?.scheduled_time || '10:00',
                     driver_payout: gig.payout || 19,
                 });
-                if (insertErr) {
-                    console.log('[CLAIM_GIG] Insert task notice:', insertErr);
-                }
             }
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
