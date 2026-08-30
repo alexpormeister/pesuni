@@ -218,17 +218,21 @@ export default function DriverSearchScreen() {
             const laundryName = laundryData?.name || 'Pesuni Pesulakeskus';
             const laundryCity = laundryData?.city || parsedLaundry.city || 'Espoo';
 
-            // 1. Haetaan delivery_tasks yhdessä orders-taulun kanssa
+            // 1. Haetaan delivery_tasks yhdessä orders-taulun kanssa (vain pesulan hyväksymät vapaat keikat)
             const { data: taskData, error: taskError } = await supabase
                 .from('delivery_tasks')
                 .select('*, orders(*)')
-                .in('status', ['unassigned', 'pending'])
+                .eq('status', 'unassigned')
                 .is('driver_id', null)
                 .order('scheduled_date', { ascending: true });
 
             const validTasks = (taskData || []).filter((t: any) => {
                 const ordStatus = (t.orders?.status || '').toLowerCase();
-                return ordStatus !== 'cancelled' && ordStatus !== 'rejected';
+                const laundryStatus = (t.orders?.laundry_status || '').toLowerCase();
+                if (ordStatus === 'cancelled' || ordStatus === 'rejected') return false;
+                // Keikka tulee kuljettajalle jakoon vasta kun pesula on hyväksynyt tilauksen
+                if (t.orders && laundryStatus !== 'accepted') return false;
+                return true;
             });
 
             if (!taskError && validTasks.length > 0) {
