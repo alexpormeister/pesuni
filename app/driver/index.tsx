@@ -25,7 +25,7 @@ import {
     View,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { getPickupCode, parseStructuredAddress, formatTimeWindow } from '../../lib/addressUtils';
@@ -87,6 +87,7 @@ export interface DriverDrive {
     laundryName?: string;
     laundryPhone?: string;
     laundryAddress?: string;
+    isLaundryReady?: boolean;
 }
 
 /**
@@ -379,6 +380,7 @@ export default function DriverDrivesScreen() {
                         laundryName,
                         laundryPhone,
                         laundryAddress: laundryFullDisplay,
+                        isLaundryReady: isPickup || ['PACKAGING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'COMPLETED'].includes(orderTracking) || ordObj.status === 'returning' || ordObj.status === 'ready_for_delivery',
                     });
                 });
             }
@@ -397,7 +399,8 @@ export default function DriverDrivesScreen() {
                     const orderStatus = (o.status || '').toLowerCase();
                     const orderTracking = (o.tracking_status || '').toUpperCase();
                     const isCompleted = orderStatus === 'delivered' || orderStatus === 'completed' || orderTracking === 'COMPLETED' || orderStatus === 'washing';
-                    const orderDateOnly = normalizeDateStr(o.pickup_date);
+                    const isDeliveryType = orderStatus === 'returning' || orderTracking === 'OUT_FOR_DELIVERY' || orderTracking === 'PACKAGING';
+                    const orderDateOnly = normalizeDateStr(isDeliveryType ? (o.return_date || o.pickup_date) : o.pickup_date);
 
                     let taskStatus = 'assigned';
                     if (isCompleted) {
@@ -512,6 +515,13 @@ export default function DriverDrivesScreen() {
         };
     }, [fetchDrives]);
 
+    // Päivitetään ajot aina kun käyttäjä palaa tälle ruudulle
+    useFocusEffect(
+        useCallback(() => {
+            fetchDrives();
+        }, [fetchDrives])
+    );
+
     // Päivitetään avoinna oleva modaali aina kun drives-tilanne muuttuu (ainoastaan tehtävän omalla ID:llä!)
     useEffect(() => {
         if (selectedDrive) {
@@ -524,6 +534,11 @@ export default function DriverDrivesScreen() {
 
     // 1. ALOITA NOUTO / ALOITA PALAUTUS
     const handleStartDrive = async (drive: DriverDrive) => {
+        if (drive.taskType === 'delivery' && !drive.isLaundryReady) {
+            Alert.alert('Pyykit pesulassa', 'Pyykit ovat vielä pesulassa käsittelyssä. Voit aloittaa palautuksen heti kun pesula merkitsee ne valmiiksi.');
+            return;
+        }
+
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         const isPickup = drive.taskType === 'pickup';
@@ -1021,6 +1036,17 @@ export default function DriverDrivesScreen() {
                 typeLabel: isPickup ? 'Noutokeikka' : 'Palautuskeikka'
             };
         }
+        if (!isPickup && !isCompleted && !drive.isLaundryReady) {
+            return {
+                text: 'Pyykit pesulassa (odottaa)',
+                color: '#7C3AED',
+                bg: '#EDE9FE',
+                border: '#DDD6FE',
+                icon: 'clock',
+                accentColor: '#8B5CF6',
+                typeLabel: 'Pyykit pesulassa'
+            };
+        }
         if (status === 'picking_up') {
             return {
                 text: 'Noutamassa asiakkaalta',
@@ -1198,9 +1224,10 @@ export default function DriverDrivesScreen() {
             <ScrollView
                 key={tab.id}
                 style={{ width: SCREEN_WIDTH }}
-                contentContainerStyle={filteredDrives.length > 0 ? styles.pageContent : styles.emptyPageContent}
+                contentContainerStyle={filteredDrives.length > 0 ? styles.pageContent : { flexGrow: 1, minHeight: SCREEN_HEIGHT * 0.7 }}
                 showsVerticalScrollIndicator={false}
-                bounces={filteredDrives.length > 0}
+                bounces={true}
+                alwaysBounceVertical={true}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -1209,6 +1236,7 @@ export default function DriverDrivesScreen() {
                             fetchDrives();
                         }}
                         tintColor={COLORS.primary}
+                        colors={[COLORS.primary]}
                     />
                 }
             >
@@ -1739,14 +1767,26 @@ export default function DriverDrivesScreen() {
                                 ) : (
                                     // --- PALAUTUSKEIKAN TILAPAINIKKEET ---
                                     selectedDrive.status === 'assigned' || selectedDrive.status === 'pending' ? (
-                                        <TouchableOpacity
-                                            style={styles.modalPrimaryBtn}
-                                            onPress={() => handleStartDrive(selectedDrive)}
-                                            activeOpacity={0.85}
-                                        >
-                                            <Feather name="play" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                                            <Text style={styles.modalPrimaryBtnText}>Aloita palautus</Text>
-                                        </TouchableOpacity>
+                                        !selectedDrive.isLaundryReady ? (
+                                            <View style={{ backgroundColor: '#F5F3FF', borderColor: '#DDD6FE', borderWidth: 1.5, borderRadius: 14, padding: 16, alignItems: 'center', width: '100%' }}>
+                                                <MaterialCommunityIcons name="washing-machine" size={28} color="#7C3AED" style={{ marginBottom: 6 }} />
+                                                <Text style={{ color: '#5B21B6', fontWeight: 'bold', fontSize: 15, textAlign: 'center' }}>
+                                                    Pyykit ovat vielä pesulassa käsittelyssä
+                                                </Text>
+                                                <Text style={{ color: '#6D28D9', fontSize: 12, textAlign: 'center', marginTop: 4, lineHeight: 17 }}>
+                                                    Palautuksen voi aloittaa heti, kun pesula on pessyt pyykit ja kuitannut ne valmiiksi noudettavaksi.
+                                                </Text>
+                                            </View>
+                                        ) : (
+                                            <TouchableOpacity
+                                                style={styles.modalPrimaryBtn}
+                                                onPress={() => handleStartDrive(selectedDrive)}
+                                                activeOpacity={0.85}
+                                            >
+                                                <Feather name="play" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                                                <Text style={styles.modalPrimaryBtnText}>Aloita palautus</Text>
+                                            </TouchableOpacity>
+                                        )
                                     ) : selectedDrive.status === 'in_progress' || selectedDrive.status === 'returning' ? (
                                         <TouchableOpacity
                                             style={styles.modalPrimaryBtn}
