@@ -933,7 +933,7 @@ export default function DriverDrivesScreen() {
                                     .update({
                                         status: 'washing',
                                         tracking_status: 'WASHING',
-                                        laundry_status: 'washing',
+                                        laundry_status: 'accepted',
                                         updated_at: nowIso
                                     })
                                     .eq('id', targetOrderId)
