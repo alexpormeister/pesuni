@@ -365,18 +365,18 @@ export default function DriverDrivesScreen() {
                         orderId: orderIdStr,
                         taskType: t.task_type,
                         status: taskStatus as any,
-                        customerName: custName,
+                        customerName: isDone ? undefined : custName,
                         customerPhone: custPhone,
-                        accessCode: ordObj.access_code,
-                        pickupPin: pin,
+                        accessCode: isDone ? undefined : ordObj.access_code,
+                        pickupPin: isDone ? '' : pin,
                         pickupCity: pCity,
                         pickupAddress: pStreet,
-                        pickupLocationName: isPickup ? `Asiakasnouto (${custName})` : laundryName,
+                        pickupLocationName: isPickup ? (isDone ? 'Asiakasnouto' : `Asiakasnouto (${custName})`) : laundryName,
                         pickupScheduled: formatDateString(t.scheduled_date || ordObj.pickup_date, t.scheduled_time || ordObj.pickup_time),
                         pickupStartedAt: t.started_at ? `Aloitit ajon ${formatDateString(t.started_at)}` : undefined,
                         deliveryCity: dCity,
                         deliveryAddress: dStreet,
-                        deliveryLocationName: !isPickup ? `Asiakastoimitus (${custName})` : laundryName,
+                        deliveryLocationName: !isPickup ? (isDone ? 'Asiakastoimitus' : `Asiakastoimitus (${custName})`) : laundryName,
                         deliveryScheduled: formatDateString(t.scheduled_date || ordObj.return_date, t.scheduled_time || ordObj.return_time),
                         deliveryCompletedAt: t.completed_at ? `Valmis ${formatDateString(t.completed_at)}` : undefined,
                         payout: Number(t.driver_payout) || 24,
@@ -477,13 +477,13 @@ export default function DriverDrivesScreen() {
                         orderId: orderIdStr,
                         taskType: 'pickup',
                         status: taskStatus as any,
-                        customerName: custName,
+                        customerName: isDone ? undefined : custName,
                         customerPhone: isDone ? undefined : o.phone,
-                        accessCode: o.access_code,
-                        pickupPin: pin,
+                        accessCode: isDone ? undefined : o.access_code,
+                        pickupPin: isDone ? '' : pin,
                         pickupCity: customerCity,
                         pickupAddress: customerDisplayAddress,
-                        pickupLocationName: `Asiakasnouto (${custName})`,
+                        pickupLocationName: isDone ? 'Asiakasnouto' : `Asiakasnouto (${custName})`,
                         pickupScheduled: formatDateString(o.pickup_date, o.pickup_time),
                         deliveryCity: laundryCity,
                         deliveryAddress: laundryFullDisplay,
@@ -1390,6 +1390,7 @@ export default function DriverDrivesScreen() {
     const modalStartCoord = selectedDrive ? getCoordinatesForCity(selectedDrive.pickupCity) : { latitude: 60.1699, longitude: 24.9384 };
     const modalEndCoord = selectedDrive ? getCoordinatesForCity(selectedDrive.deliveryCity) : { latitude: 60.2055, longitude: 24.6559 };
     const modalBadge = selectedDrive ? getStatusBadgeInfo(selectedDrive) : null;
+    const isCompletedDrive = selectedDrive ? (selectedDrive.status === 'completed' || selectedDrive.dateCategory === 'completed') : false;
 
     // Noutokoodi näkyy VASTA kun pyykki on noudettu asiakkaalta (kuljetuksessa tai toimituksessa)
     const isPickedUpFromCustomer = selectedDrive ? (
@@ -1558,14 +1559,18 @@ export default function DriverDrivesScreen() {
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.routeItemLabel}>Lähtöpaikka</Text>
                                         <Text style={styles.routeItemName}>{selectedDrive.pickupLocationName}</Text>
-                                        <TouchableOpacity
-                                            style={styles.routeAddressBtn}
-                                            onPress={() => openNavigation(selectedDrive.pickupAddress)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text style={styles.routeAddressText}>{selectedDrive.pickupAddress}</Text>
-                                            <Feather name="navigation" size={14} color="#0284C7" style={{ marginLeft: 6 }} />
-                                        </TouchableOpacity>
+                                        {!isCompletedDrive ? (
+                                            <TouchableOpacity
+                                                style={styles.routeAddressBtn}
+                                                onPress={() => openNavigation(selectedDrive.pickupAddress)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Text style={styles.routeAddressText}>{selectedDrive.pickupAddress}</Text>
+                                                <Feather name="navigation" size={14} color="#0284C7" style={{ marginLeft: 6 }} />
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <Text style={[styles.routeAddressText, { marginTop: 3 }]}>{selectedDrive.pickupAddress}</Text>
+                                        )}
                                         <Text style={styles.routeTimeText}>Aikataulu: {selectedDrive.pickupScheduled}</Text>
                                     </View>
                                 </View>
@@ -1578,193 +1583,201 @@ export default function DriverDrivesScreen() {
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.routeItemLabel}>Määränpää</Text>
                                         <Text style={styles.routeItemName}>{selectedDrive.deliveryLocationName}</Text>
-                                        <TouchableOpacity
-                                            style={styles.routeAddressBtn}
-                                            onPress={() => openNavigation(selectedDrive.deliveryAddress)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text style={styles.routeAddressText}>{selectedDrive.deliveryAddress}</Text>
-                                            <Feather name="navigation" size={14} color="#0284C7" style={{ marginLeft: 6 }} />
-                                        </TouchableOpacity>
+                                        {!isCompletedDrive ? (
+                                            <TouchableOpacity
+                                                style={styles.routeAddressBtn}
+                                                onPress={() => openNavigation(selectedDrive.deliveryAddress)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Text style={styles.routeAddressText}>{selectedDrive.deliveryAddress}</Text>
+                                                <Feather name="navigation" size={14} color="#0284C7" style={{ marginLeft: 6 }} />
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <Text style={[styles.routeAddressText, { marginTop: 3 }]}>{selectedDrive.deliveryAddress}</Text>
+                                        )}
                                         <Text style={styles.routeTimeText}>Aikataulu: {selectedDrive.deliveryScheduled}</Text>
                                     </View>
                                 </View>
                             </View>
 
-                            {/* 4. 👤 ASIAKASTIEDOT (AVATTAVA / ACCORDION) */}
-                            <View style={styles.detailSection}>
-                                <TouchableOpacity
-                                    style={styles.accordionHeader}
-                                    onPress={() => {
-                                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                        setIsCustomerInfoExpanded(prev => !prev);
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.accordionTitleRow}>
-                                        <View style={[styles.accordionIconCircle, { backgroundColor: '#E0F2FE' }]}>
-                                            <Feather name="user" size={16} color="#0284C7" />
-                                        </View>
-                                        <Text style={styles.accordionTitle}>Asiakastiedot</Text>
-                                    </View>
-                                    <Feather
-                                        name={isCustomerInfoExpanded ? "chevron-up" : "chevron-down"}
-                                        size={20}
-                                        color="#64748B"
-                                    />
-                                </TouchableOpacity>
-
-                                {isCustomerInfoExpanded && (
-                                    <View style={styles.accordionContent}>
-                                        <View style={styles.infoRowBetween}>
-                                            <View>
-                                                <Text style={styles.infoLabel}>Asiakkaan nimi</Text>
-                                                <Text style={styles.infoValueBold}>{selectedDrive.customerName || 'Asiakas'}</Text>
+                            {/* 4. 👤 ASIAKASTIEDOT (VAIN KESKEN OLEVAT KEIKAT) */}
+                            {!isCompletedDrive && (
+                                <View style={styles.detailSection}>
+                                    <TouchableOpacity
+                                        style={styles.accordionHeader}
+                                        onPress={() => {
+                                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                            setIsCustomerInfoExpanded(prev => !prev);
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.accordionTitleRow}>
+                                            <View style={[styles.accordionIconCircle, { backgroundColor: '#E0F2FE' }]}>
+                                                <Feather name="user" size={16} color="#0284C7" />
                                             </View>
-                                            {selectedDrive.customerPhone && (
-                                                <TouchableOpacity
-                                                    style={styles.phoneActionBtn}
-                                                    onPress={() => Linking.openURL(`tel:${selectedDrive.customerPhone}`)}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Feather name="phone-call" size={14} color="#0284C7" style={{ marginRight: 6 }} />
-                                                    <Text style={styles.phoneActionBtnText}>Soita asiakkaalle</Text>
-                                                </TouchableOpacity>
-                                            )}
+                                            <Text style={styles.accordionTitle}>Asiakastiedot</Text>
                                         </View>
+                                        <Feather
+                                            name={isCustomerInfoExpanded ? "chevron-up" : "chevron-down"}
+                                            size={20}
+                                            color="#64748B"
+                                        />
+                                    </TouchableOpacity>
 
-                                        {/* ASIAKKAAN LISÄOHJEET JA OVIKOODI */}
-                                        {selectedDrive.notes ? (
-                                            <View style={styles.extraBox}>
-                                                <Text style={styles.extraBoxLabel}>Asiakkaan lisäohjeet / Ovikoodi</Text>
-                                                <Text style={styles.extraBoxValue}>{selectedDrive.notes}</Text>
-                                            </View>
-                                        ) : null}
-
-                                        {/* 🛡️ 5-NUMEROINEN NOUTOKOODI OVELLA (TURVAVARMISTUS) */}
-                                        <View style={styles.bagCodeSection}>
-                                            <View style={styles.bagCodeHeader}>
-                                                <View style={styles.bagCodeIconCircle}>
-                                                    <Feather name="shield" size={16} color="#0284C7" />
+                                    {isCustomerInfoExpanded && (
+                                        <View style={styles.accordionContent}>
+                                            <View style={styles.infoRowBetween}>
+                                                <View>
+                                                    <Text style={styles.infoLabel}>Asiakkaan nimi</Text>
+                                                    <Text style={styles.infoValueBold}>{selectedDrive.customerName || 'Asiakas'}</Text>
                                                 </View>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={styles.bagCodeTitle}>Noutokoodi ovella</Text>
-                                                    <Text style={styles.bagCodeDesc}>Kerro koodi asiakkaalle, jos hän pyytää varmistusta</Text>
+                                                {selectedDrive.customerPhone && (
+                                                    <TouchableOpacity
+                                                        style={styles.phoneActionBtn}
+                                                        onPress={() => Linking.openURL(`tel:${selectedDrive.customerPhone}`)}
+                                                        activeOpacity={0.7}
+                                                    >
+                                                        <Feather name="phone-call" size={14} color="#0284C7" style={{ marginRight: 6 }} />
+                                                        <Text style={styles.phoneActionBtnText}>Soita asiakkaalle</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+
+                                            {/* ASIAKKAAN LISÄOHJEET JA OVIKOODI */}
+                                            {selectedDrive.notes ? (
+                                                <View style={styles.extraBox}>
+                                                    <Text style={styles.extraBoxLabel}>Asiakkaan lisäohjeet / Ovikoodi</Text>
+                                                    <Text style={styles.extraBoxValue}>{selectedDrive.notes}</Text>
                                                 </View>
-                                            </View>
-                                            <View style={styles.bagCodeBadgeRow}>
-                                                <Text style={styles.bagCodeHighlight}>{selectedDrive.pickupPin}</Text>
-                                                <TouchableOpacity
-                                                    style={styles.bagCodeCopyBtn}
-                                                    onPress={() => {
-                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                                                        Alert.alert('Kopioitu', `Noutokoodi ${selectedDrive.pickupPin} kopioitu leikepöydälle.`);
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Feather name="copy" size={14} color="#0284C7" style={{ marginRight: 4 }} />
-                                                    <Text style={styles.bagCodeCopyText}>Kopioi</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
+                                            ) : null}
 
-                                        {selectedDrive.pickupWeightKg ? (
-                                            <View style={styles.extraBox}>
-                                                <Text style={styles.extraBoxLabel}>Punnittu säkin paino</Text>
-                                                <Text style={styles.extraBoxValue}>{selectedDrive.pickupWeightKg} kg</Text>
-                                            </View>
-                                        ) : null}
-
-                                        {/* OTETUT TUOTEKUVAT */}
-                                        {selectedDrive.pickupPhotos && selectedDrive.pickupPhotos.length > 0 ? (
-                                            <View style={styles.extraBox}>
-                                                <Text style={styles.extraBoxLabel}>Noudossa otetut tuotekuvat ({selectedDrive.pickupPhotos.length} kpl)</Text>
-                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                                                    {selectedDrive.pickupPhotos.map((photoUri, idx) => (
-                                                        <Image
-                                                            key={idx}
-                                                            source={{ uri: photoUri }}
-                                                            style={styles.detailThumbnail}
-                                                        />
-                                                    ))}
-                                                </ScrollView>
-                                            </View>
-                                        ) : null}
-                                    </View>
-                                )}
-                            </View>
-
-                            {/* 5. 🧺 PESULAN TIEDOT (AVATTAVA / ACCORDION) */}
-                            <View style={styles.detailSection}>
-                                <TouchableOpacity
-                                    style={styles.accordionHeader}
-                                    onPress={() => {
-                                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                        setIsLaundryInfoExpanded(prev => !prev);
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.accordionTitleRow}>
-                                        <View style={[styles.accordionIconCircle, { backgroundColor: '#F0FDF4' }]}>
-                                            <Feather name="home" size={16} color="#10B981" />
-                                        </View>
-                                        <Text style={styles.accordionTitle}>Pesulan tiedot</Text>
-                                    </View>
-                                    <Feather
-                                        name={isLaundryInfoExpanded ? "chevron-up" : "chevron-down"}
-                                        size={20}
-                                        color="#64748B"
-                                    />
-                                </TouchableOpacity>
-
-                                {isLaundryInfoExpanded && (
-                                    <View style={styles.accordionContent}>
-                                        <View style={styles.infoRowBetween}>
-                                            <View style={{ flex: 1, marginRight: 10 }}>
-                                                <Text style={styles.infoLabel}>Pesulan nimi</Text>
-                                                <Text style={styles.infoValueBold}>{selectedDrive.laundryName || '24Pesula Entresse'}</Text>
-                                            </View>
-                                            {selectedDrive.laundryPhone && (
-                                                <TouchableOpacity
-                                                    style={styles.phoneActionBtn}
-                                                    onPress={() => Linking.openURL(`tel:${selectedDrive.laundryPhone}`)}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Feather name="phone-call" size={14} color="#0284C7" style={{ marginRight: 6 }} />
-                                                    <Text style={styles.phoneActionBtnText}>Soita pesulaan</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-
-                                        {/* 🏷️ PYYKKIPUSSIN KOODI */}
-                                        <View style={styles.bagCodeSection}>
-                                            <View style={styles.bagCodeHeader}>
-                                                <View style={styles.bagCodeIconCircle}>
-                                                    <Feather name="tag" size={16} color="#0284C7" />
+                                            {/* 🛡️ 5-NUMEROINEN NOUTOKOODI OVELLA (TURVAVARMISTUS) */}
+                                            <View style={styles.bagCodeSection}>
+                                                <View style={styles.bagCodeHeader}>
+                                                    <View style={styles.bagCodeIconCircle}>
+                                                        <Feather name="shield" size={16} color="#0284C7" />
+                                                    </View>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={styles.bagCodeTitle}>Noutokoodi ovella</Text>
+                                                        <Text style={styles.bagCodeDesc}>Kerro koodi asiakkaalle, jos hän pyytää varmistusta</Text>
+                                                    </View>
                                                 </View>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={styles.bagCodeTitle}>Pyykkipussin koodi</Text>
-                                                    <Text style={styles.bagCodeDesc}>Merkitse säkkiin / näytä pesulassa luovutettaessa</Text>
+                                                <View style={styles.bagCodeBadgeRow}>
+                                                    <Text style={styles.bagCodeHighlight}>{selectedDrive.pickupPin}</Text>
+                                                    <TouchableOpacity
+                                                        style={styles.bagCodeCopyBtn}
+                                                        onPress={() => {
+                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                                                            Alert.alert('Kopioitu', `Noutokoodi ${selectedDrive.pickupPin} kopioitu leikepöydälle.`);
+                                                        }}
+                                                        activeOpacity={0.7}
+                                                    >
+                                                        <Feather name="copy" size={14} color="#0284C7" style={{ marginRight: 4 }} />
+                                                        <Text style={styles.bagCodeCopyText}>Kopioi</Text>
+                                                    </TouchableOpacity>
                                                 </View>
                                             </View>
-                                            <View style={styles.bagCodeBadgeRow}>
-                                                <Text style={styles.bagCodeHighlight}>{selectedDrive.accessCode || 'XEOUIS'}</Text>
-                                                <TouchableOpacity
-                                                    style={styles.bagCodeCopyBtn}
-                                                    onPress={() => {
-                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                                                        Alert.alert('Kopioitu', `Pyykkipussin koodi ${selectedDrive.accessCode || 'XEOUIS'} kopioitu leikepöydälle.`);
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Feather name="copy" size={14} color="#0284C7" style={{ marginRight: 4 }} />
-                                                    <Text style={styles.bagCodeCopyText}>Kopioi</Text>
-                                                </TouchableOpacity>
+
+                                            {selectedDrive.pickupWeightKg ? (
+                                                <View style={styles.extraBox}>
+                                                    <Text style={styles.extraBoxLabel}>Punnittu säkin paino</Text>
+                                                    <Text style={styles.extraBoxValue}>{selectedDrive.pickupWeightKg} kg</Text>
+                                                </View>
+                                            ) : null}
+
+                                            {/* OTETUT TUOTEKUVAT */}
+                                            {selectedDrive.pickupPhotos && selectedDrive.pickupPhotos.length > 0 ? (
+                                                <View style={styles.extraBox}>
+                                                    <Text style={styles.extraBoxLabel}>Noudossa otetut tuotekuvat ({selectedDrive.pickupPhotos.length} kpl)</Text>
+                                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                                                        {selectedDrive.pickupPhotos.map((photoUri, idx) => (
+                                                            <Image
+                                                                key={idx}
+                                                                source={{ uri: photoUri }}
+                                                                style={styles.detailThumbnail}
+                                                            />
+                                                        ))}
+                                                    </ScrollView>
+                                                </View>
+                                            ) : null}
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+
+                            {/* 5. 🧺 PESULAN TIEDOT (VAIN KESKEN OLEVAT KEIKAT) */}
+                            {!isCompletedDrive && (
+                                <View style={styles.detailSection}>
+                                    <TouchableOpacity
+                                        style={styles.accordionHeader}
+                                        onPress={() => {
+                                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                            setIsLaundryInfoExpanded(prev => !prev);
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.accordionTitleRow}>
+                                            <View style={[styles.accordionIconCircle, { backgroundColor: '#F0FDF4' }]}>
+                                                <Feather name="home" size={16} color="#10B981" />
+                                            </View>
+                                            <Text style={styles.accordionTitle}>Pesulan tiedot</Text>
+                                        </View>
+                                        <Feather
+                                            name={isLaundryInfoExpanded ? "chevron-up" : "chevron-down"}
+                                            size={20}
+                                            color="#64748B"
+                                        />
+                                    </TouchableOpacity>
+
+                                    {isLaundryInfoExpanded && (
+                                        <View style={styles.accordionContent}>
+                                            <View style={styles.infoRowBetween}>
+                                                <View style={{ flex: 1, marginRight: 10 }}>
+                                                    <Text style={styles.infoLabel}>Pesulan nimi</Text>
+                                                    <Text style={styles.infoValueBold}>{selectedDrive.laundryName || '24Pesula Entresse'}</Text>
+                                                </View>
+                                                {selectedDrive.laundryPhone && (
+                                                    <TouchableOpacity
+                                                        style={styles.phoneActionBtn}
+                                                        onPress={() => Linking.openURL(`tel:${selectedDrive.laundryPhone}`)}
+                                                        activeOpacity={0.7}
+                                                    >
+                                                        <Feather name="phone-call" size={14} color="#0284C7" style={{ marginRight: 6 }} />
+                                                        <Text style={styles.phoneActionBtnText}>Soita pesulaan</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+
+                                            {/* 🏷️ PYYKKIPUSSIN KOODI */}
+                                            <View style={styles.bagCodeSection}>
+                                                <View style={styles.bagCodeHeader}>
+                                                    <View style={styles.bagCodeIconCircle}>
+                                                        <Feather name="tag" size={16} color="#0284C7" />
+                                                    </View>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={styles.bagCodeTitle}>Pyykkipussin koodi</Text>
+                                                        <Text style={styles.bagCodeDesc}>Merkitse säkkiin / näytä pesulassa luovutettaessa</Text>
+                                                    </View>
+                                                </View>
+                                                <View style={styles.bagCodeBadgeRow}>
+                                                    <Text style={styles.bagCodeHighlight}>{selectedDrive.accessCode || 'XEOUIS'}</Text>
+                                                    <TouchableOpacity
+                                                        style={styles.bagCodeCopyBtn}
+                                                        onPress={() => {
+                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                                                            Alert.alert('Kopioitu', `Pyykkipussin koodi ${selectedDrive.accessCode || 'XEOUIS'} kopioitu leikepöydälle.`);
+                                                        }}
+                                                        activeOpacity={0.7}
+                                                    >
+                                                        <Feather name="copy" size={14} color="#0284C7" style={{ marginRight: 4 }} />
+                                                        <Text style={styles.bagCodeCopyText}>Kopioi</Text>
+                                                    </TouchableOpacity>
+                                                </View>
                                             </View>
                                         </View>
-                                    </View>
-                                )}
-                            </View>
+                                    )}
+                                </View>
+                            )}
 
                             {/* 6. PALKKIOERITTELY */}
                             <View style={styles.payoutDetailCard}>
