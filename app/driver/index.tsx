@@ -88,6 +88,8 @@ export interface DriverDrive {
     laundryPhone?: string;
     laundryAddress?: string;
     isLaundryReady?: boolean;
+    completedAtRaw?: string | null;
+    rawDate?: string | null;
 }
 
 /**
@@ -117,6 +119,7 @@ export default function DriverDrivesScreen() {
     const [pageIndex, setPageIndex] = useState(0);
 
     const [drives, setDrives] = useState<DriverDrive[]>([]);
+    const [completedPage, setCompletedPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -388,6 +391,8 @@ export default function DriverDrivesScreen() {
                         laundryPhone,
                         laundryAddress: laundryFullDisplay,
                         isLaundryReady: isPickup || ['PACKAGING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'COMPLETED'].includes(orderTracking) || ordObj.status === 'returning' || ordObj.status === 'ready_for_delivery',
+                        completedAtRaw: t.completed_at || t.updated_at || ordObj.actual_return_time || ordObj.actual_pickup_time || ordObj.updated_at || ordObj.created_at,
+                        rawDate: t.scheduled_date || ordObj.pickup_date || ordObj.created_at,
                     });
                 });
             }
@@ -495,6 +500,8 @@ export default function DriverDrivesScreen() {
                         laundryName,
                         laundryPhone,
                         laundryAddress: laundryFullDisplay,
+                        completedAtRaw: o.actual_return_time || o.actual_pickup_time || o.updated_at || o.created_at,
+                        rawDate: o.pickup_date || o.created_at,
                     });
                 });
             }
@@ -1229,13 +1236,31 @@ export default function DriverDrivesScreen() {
 
     // Yksittäisen välilehden listaussivu
     const renderPage = (tab: { id: TabType; title: string }) => {
-        const filteredDrives = drives.filter(d => d.dateCategory === tab.id);
+        const rawDrives = drives.filter(d => d.dateCategory === tab.id);
+        let displayDrives = rawDrives;
+        let totalCompletedPages = 1;
+        let currentCompletedPage = 1;
+
+        if (tab.id === 'completed') {
+            // Uusimmat ylhäällä ja vanhimmat alhaalla
+            const sorted = [...rawDrives].sort((a, b) => {
+                const timeA = new Date(a.completedAtRaw || a.rawDate || 0).getTime();
+                const timeB = new Date(b.completedAtRaw || b.rawDate || 0).getTime();
+                return timeB - timeA;
+            });
+
+            const COMPLETED_PAGE_SIZE = 5;
+            totalCompletedPages = Math.max(1, Math.ceil(sorted.length / COMPLETED_PAGE_SIZE));
+            currentCompletedPage = Math.min(completedPage, totalCompletedPages);
+            const startIdx = (currentCompletedPage - 1) * COMPLETED_PAGE_SIZE;
+            displayDrives = sorted.slice(startIdx, startIdx + COMPLETED_PAGE_SIZE);
+        }
 
         return (
             <ScrollView
                 key={tab.id}
                 style={{ width: SCREEN_WIDTH }}
-                contentContainerStyle={filteredDrives.length > 0 ? styles.pageContent : { flexGrow: 1, minHeight: SCREEN_HEIGHT * 0.7 }}
+                contentContainerStyle={displayDrives.length > 0 ? styles.pageContent : { flexGrow: 1, minHeight: SCREEN_HEIGHT * 0.7 }}
                 showsVerticalScrollIndicator={false}
                 bounces={true}
                 alwaysBounceVertical={true}
@@ -1251,8 +1276,49 @@ export default function DriverDrivesScreen() {
                     />
                 }
             >
-                {filteredDrives.length > 0 ? (
-                    filteredDrives.map(renderDriveCard)
+                {displayDrives.length > 0 ? (
+                    <>
+                        {displayDrives.map(renderDriveCard)}
+
+                        {tab.id === 'completed' && totalCompletedPages > 1 && (
+                            <View style={styles.completedPaginationContainer}>
+                                <TouchableOpacity
+                                    style={[styles.pageNavBtn, currentCompletedPage <= 1 && styles.pageNavBtnDisabled]}
+                                    disabled={currentCompletedPage <= 1}
+                                    onPress={() => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                                        setCompletedPage(prev => Math.max(1, prev - 1));
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Feather name="chevron-left" size={16} color={currentCompletedPage <= 1 ? '#94A3B8' : '#0284C7'} style={{ marginRight: 4 }} />
+                                    <Text style={[styles.pageNavBtnText, currentCompletedPage <= 1 && styles.pageNavBtnTextDisabled]}>Edellinen</Text>
+                                </TouchableOpacity>
+
+                                <View style={styles.pageIndicatorBox}>
+                                    <Text style={styles.pageIndicatorText}>
+                                        Sivu {currentCompletedPage} / {totalCompletedPages}
+                                    </Text>
+                                    <Text style={styles.pageTotalCountText}>
+                                        ({rawDrives.length} suoritettua)
+                                    </Text>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={[styles.pageNavBtn, currentCompletedPage >= totalCompletedPages && styles.pageNavBtnDisabled]}
+                                    disabled={currentCompletedPage >= totalCompletedPages}
+                                    onPress={() => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                                        setCompletedPage(prev => Math.min(totalCompletedPages, prev + 1));
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[styles.pageNavBtnText, currentCompletedPage >= totalCompletedPages && styles.pageNavBtnTextDisabled]}>Seuraava</Text>
+                                    <Feather name="chevron-right" size={16} color={currentCompletedPage >= totalCompletedPages ? '#94A3B8' : '#0284C7'} style={{ marginLeft: 4 }} />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </>
                 ) : (
                     <LinearGradient
                         colors={['#FFFFFF', '#F9FCFF', '#F0F8FE', '#EBF6FE']}
@@ -3018,5 +3084,61 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginRight: 8,
         backgroundColor: '#F1F5F9',
+    },
+    completedPaginationContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginTop: 10,
+        marginBottom: 26,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    pageNavBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0F9FF',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+    },
+    pageNavBtnDisabled: {
+        backgroundColor: '#F8FAFC',
+        borderColor: '#E2E8F0',
+        opacity: 0.5,
+    },
+    pageNavBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#0284C7',
+    },
+    pageNavBtnTextDisabled: {
+        color: '#94A3B8',
+    },
+    pageIndicatorBox: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pageIndicatorText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#0F172A',
+    },
+    pageTotalCountText: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#64748B',
+        marginTop: 1,
     },
 });
