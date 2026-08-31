@@ -919,11 +919,11 @@ export default function DriverDrivesScreen() {
                         try {
                             const nowIso = new Date().toISOString();
 
-                            if (drive.id || targetOrderId) {
+                            if (drive.id) {
                                 await supabase
                                     .from('delivery_tasks')
                                     .update({ status: 'completed', completed_at: nowIso, updated_at: nowIso })
-                                    .or(`id.eq.${drive.id},order_id.eq.${targetOrderId}`)
+                                    .eq('id', drive.id)
                                     .select();
                             }
 
