@@ -996,7 +996,7 @@ export default function DriverDrivesScreen() {
                                     .update({
                                         status: 'delivered',
                                         tracking_status: 'COMPLETED',
-                                        delivered_at: nowIso,
+                                        actual_return_time: nowIso,
                                         updated_at: nowIso
                                     })
                                     .eq('id', targetOrderId)
