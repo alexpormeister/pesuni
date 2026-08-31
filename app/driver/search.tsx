@@ -340,6 +340,7 @@ export default function DriverSearchScreen() {
 
             const rawId = gig.id;
             const orderId = gig.rawTask?.order_id || (gig.rawTask?.id ? String(gig.rawTask.id) : gig.id);
+            const isPickupTask = gig.taskType === 'pickup';
             const nowIso = new Date().toISOString();
 
             // 1. Kokeillaan ensin RPC-funktiota
@@ -355,18 +356,20 @@ export default function DriverSearchScreen() {
                 return;
             }
 
-            // 2. Päivitetään delivery_tasks
+            // 2. Päivitetään VAIN JA AINOASTAAN tämä yksi kyseinen task (id = rawId)
             const { data: updatedTasks, error: taskUpdateErr } = await supabase
                 .from('delivery_tasks')
                 .update({ driver_id: currentUserId, status: 'assigned', updated_at: nowIso })
-                .or(`id.eq.${rawId},order_id.eq.${orderId}`)
+                .eq('id', rawId)
                 .select();
 
-            // 3. Päivitetään orders
-            const { error: orderUpdateErr } = await supabase
-                .from('orders')
-                .update({ driver_id: currentUserId, updated_at: nowIso })
-                .eq('id', orderId);
+            // 3. Päivitetään orders vain jos kyseessä on noutokeikka
+            if (isPickupTask && orderId) {
+                await supabase
+                    .from('orders')
+                    .update({ driver_id: currentUserId, updated_at: nowIso })
+                    .eq('id', orderId);
+            }
 
             if (taskUpdateErr && orderUpdateErr) {
                 throw new Error(taskUpdateErr?.message || orderUpdateErr?.message || 'Keikan tallentaminen tietokantaan epäonnistui.');
