@@ -230,8 +230,8 @@ export default function DriverSearchScreen() {
                 const ordStatus = (t.orders?.status || '').toLowerCase();
                 const laundryStatus = (t.orders?.laundry_status || '').toLowerCase();
                 if (ordStatus === 'cancelled' || ordStatus === 'rejected') return false;
-                // Keikka tulee kuljettajalle jakoon vasta kun pesula on hyväksynyt tilauksen
-                if (t.orders && laundryStatus !== 'accepted') return false;
+                // Keikka tulee kuljettajille jakoon VASTA JA AINOASTAAN kun pesula on hyväksynyt tilauksen
+                if (laundryStatus !== 'accepted') return false;
                 return true;
             });
 
@@ -249,13 +249,12 @@ export default function DriverSearchScreen() {
                     const customerStreet = parsedCustomer.streetName || parsedCustomer.streetOnly || 'Asiakasosoite';
                     const customerCity = parsedCustomer.city || 'Espoo';
 
-                    // Lähtö ja määränpää:
-                    // Hakukeikka: Lähtö = Asiakkaan kadunnimi & kaupunki | Määränpää = Pesulan nimi & pesulan kaupunki
-                    // Palautuskeikka: Lähtö = Pesulan nimi & pesulan kaupunki | Määränpää = Asiakkaan kadunnimi & kaupunki
-                    const pStreet = isPickup ? customerStreet : laundryName;
-                    const pCity = isPickup ? customerCity : laundryCity;
-                    const dStreet = isPickup ? laundryName : customerStreet;
-                    const dCity = isPickup ? laundryCity : customerCity;
+                    // Lähtö ja määränpää (hyväksyneen pesulan nimi & osoite):
+                    const activeLaundryName = isPickup ? (t.destination_name || 'Pesula') : (t.origin_name || 'Pesula');
+                    const pStreet = isPickup ? customerStreet : activeLaundryName;
+                    const pCity = isPickup ? customerCity : 'Espoo';
+                    const dStreet = isPickup ? activeLaundryName : customerStreet;
+                    const dCity = isPickup ? 'Espoo' : customerCity;
 
                     const { distanceKm, durationMin } = calculateRouteDistanceAndDuration(pCity, dCity);
                     const rawId = String(t.order_id || t.id).replace(/[^a-zA-Z0-9]/g, '');
@@ -292,54 +291,7 @@ export default function DriverSearchScreen() {
                 return;
             }
 
-            // 2. Fallback: Haetaan orders-taulusta vapaat aktiiviset tilaukset
-            const { data: orderData, error: orderError } = await supabase
-                .from('orders')
-                .select('*')
-                .is('driver_id', null)
-                .in('status', ['pending', 'accepted'])
-                .order('created_at', { ascending: false });
-
-            if (!orderError && orderData && orderData.length > 0) {
-                const formatted: GigItem[] = orderData.map((o: any) => {
-                    const parsedCustomer = parseStructuredAddress(o.address);
-                    const customerStreet = parsedCustomer.streetName || parsedCustomer.streetOnly || 'Asiakasosoite';
-                    const customerCity = parsedCustomer.city || 'Espoo';
-
-                    const pickupDateKey = formatDatePill(o.pickup_date);
-                    const payout = Math.round((Number(o.price) || 45) * 0.4 / 2);
-                    const { distanceKm, durationMin } = calculateRouteDistanceAndDuration(customerCity, laundryCity);
-
-                    const rawId = String(o.id).replace(/[^a-zA-Z0-9]/g, '');
-                    const formattedOrderId = `#${rawId.slice(0, 8).toUpperCase()}`;
-
-                    const startTime = formatCleanTime(o.pickup_time || o.pickup_slot, '10:00');
-                    const arrivalTime = calculateArrivalTime(startTime, durationMin);
-
-                    return {
-                        id: String(o.id),
-                        orderId: formattedOrderId,
-                        taskType: 'pickup',
-                        dateKey: pickupDateKey,
-                        pickupTime: `${pickupDateKey} ${startTime}`,
-                        pickupStreet: customerStreet,
-                        pickupCity: customerCity,
-                        deliveryTime: `${pickupDateKey} ${arrivalTime}`,
-                        deliveryStreet: laundryName,
-                        deliveryCity: laundryCity,
-                        tier: 'Haku',
-                        distanceKm,
-                        estimatedMinutes: durationMin,
-                        payout: payout > 0 ? payout : 19,
-                        notes: o.special_instructions,
-                        rawTask: o,
-                    };
-                });
-
-                setGigs(formatted);
-                return;
-            }
-
+            // Jos ei ole pesulan hyväksymiä vapaita keikkoja, lista on tyhjä
             setGigs([]);
         } catch {
             setGigs([]);
