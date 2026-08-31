@@ -249,11 +249,18 @@ export default function DriverDrivesScreen() {
             if (taskData && taskData.length > 0) {
                 taskData.forEach((t: any) => {
                     const ordObj = Array.isArray(t.orders) ? (t.orders[0] || {}) : (t.orders || {});
+                    const orderStatus = (ordObj.status || '').toLowerCase();
+                    const taskStatusRaw = (t.status || '').toLowerCase();
+
+                    // Hylättyjä tai peruutettuja keikkoja ei koskaan näytetä kuljettajan aktiivisissa ajoissa
+                    if (taskStatusRaw === 'cancelled' || orderStatus === 'rejected' || orderStatus === 'cancelled') {
+                        return;
+                    }
+
                     const isPickup = t.task_type === 'pickup';
                     const rawTaskDate = isPickup ? (t.scheduled_date || ordObj.pickup_date) : (t.scheduled_date || ordObj.return_date);
                     const taskDateOnly = normalizeDateStr(rawTaskDate);
 
-                    const orderStatus = (ordObj.status || '').toLowerCase();
                     const orderTracking = (ordObj.tracking_status || '').toUpperCase();
                     const ordActualPickup = ordObj.actual_pickup_time;
                     const ordActualReturn = ordObj.actual_return_time;
@@ -390,13 +397,17 @@ export default function DriverDrivesScreen() {
                     const orderIdStr = String(o.id);
                     if (seenOrderIds.has(orderIdStr)) return;
 
+                    const orderStatus = (o.status || '').toLowerCase();
+                    if (orderStatus === 'rejected' || orderStatus === 'cancelled') {
+                        return;
+                    }
+
                     const parsedCustomer = parseStructuredAddress(o.address);
                     const customerFullAddress = (parsedCustomer.fullAddress && parsedCustomer.fullAddress !== 'Noutopiste, Espoo')
                         ? parsedCustomer.fullAddress
                         : (o.address || 'Osoite ei saatavilla');
                     const customerCity = parsedCustomer.city || 'Espoo';
 
-                    const orderStatus = (o.status || '').toLowerCase();
                     const orderTracking = (o.tracking_status || '').toUpperCase();
                     const isCompleted = orderStatus === 'delivered' || orderStatus === 'completed' || orderTracking === 'COMPLETED' || orderStatus === 'washing';
                     const isDeliveryType = orderStatus === 'returning' || orderTracking === 'OUT_FOR_DELIVERY' || orderTracking === 'PACKAGING';
