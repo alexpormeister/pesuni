@@ -820,39 +820,6 @@ export default function DriverSearchScreen() {
                                     <Feather name="message-square" size={18} color="#0284C7" />
                                 </TouchableOpacity>
                             </View>
-
-                            {/* 10. KEIKKOJA MÄÄRÄNPÄÄSTÄ */}
-                            <View style={styles.returnGigSection}>
-                                <Text style={styles.returnGigHeader}>Keikkoja määränpäästä</Text>
-                                <Text style={styles.returnGigSub}>
-                                    Saavut perille {selectedGig.deliveryTime}
-                                </Text>
-
-                                <View style={styles.returnGigCard}>
-                                    <View style={styles.rowBetween}>
-                                        <Text style={styles.returnGigRoute}>
-                                            {selectedGig.deliveryCity} → {selectedGig.pickupCity}
-                                        </Text>
-                                        <Text style={styles.returnGigPayout}>19 €</Text>
-                                    </View>
-                                    <View style={styles.returnGigDivider} />
-
-                                    <View style={[styles.rowBetween, { marginTop: 6 }]}>
-                                        <Text style={styles.returnGigMetaLabel}>Lähtöpaikka</Text>
-                                        <Text style={styles.returnGigMetaValue}>{selectedGig.deliveryStreet}</Text>
-                                    </View>
-
-                                    <View style={[styles.rowBetween, { marginTop: 6 }]}>
-                                        <Text style={styles.returnGigMetaLabel}>Lähtöaika</Text>
-                                        <Text style={styles.returnGigMetaValue}>{selectedGig.dateKey} 15:30 - 16:00</Text>
-                                    </View>
-
-                                    <View style={[styles.rowBetween, { marginTop: 6 }]}>
-                                        <Text style={styles.returnGigMetaLabel}>Siirtymä</Text>
-                                        <Text style={styles.returnGigMetaValue}>0 km</Text>
-                                    </View>
-                                </View>
-                            </View>
                         </ScrollView>
                     </SafeAreaView>
                 )}
@@ -1319,57 +1286,5 @@ const styles = StyleSheet.create({
         backgroundColor: '#E0F2FE',
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    returnGigSection: {
-        backgroundColor: '#F0F9FF',
-        marginHorizontal: 16,
-        marginTop: 28,
-        borderRadius: 24,
-        padding: 18,
-        borderWidth: 1,
-        borderColor: '#BAE6FD',
-    },
-    returnGigHeader: {
-        fontSize: 17,
-        fontWeight: '800',
-        color: '#0284C7',
-        marginBottom: 2,
-    },
-    returnGigSub: {
-        fontSize: 12,
-        color: '#64748B',
-        marginBottom: 14,
-    },
-    returnGigCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 18,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: '#BAE6FD',
-    },
-    returnGigRoute: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: '#0284C7',
-    },
-    returnGigPayout: {
-        fontSize: 16,
-        fontWeight: '900',
-        color: '#0F172A',
-    },
-    returnGigDivider: {
-        height: 1,
-        backgroundColor: '#F1F5F9',
-        marginVertical: 10,
-    },
-    returnGigMetaLabel: {
-        fontSize: 13,
-        color: '#64748B',
-        fontWeight: '600',
-    },
-    returnGigMetaValue: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#0F172A',
     },
 });
