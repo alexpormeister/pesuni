@@ -34,7 +34,15 @@ const CATEGORY_FILTERS = [
     { id: 'Muu', name: 'Muut' },
 ];
 
-const CATEGORY_STYLE_MAP: Record<string, { bg: string; color: string; icon: string }> = {
+export const CATEGORY_ICON_MAP: Record<string, string> = {
+    'Matto': 'rug',
+    'Puku / Juhlavaate': 'tshirt-crew',
+    'Takki / Untuvatuote': 'jacket',
+    'Kodintekstiili / Verhot': 'curtains',
+    'Muu': 'tag-outline',
+};
+
+export const CATEGORY_STYLE_MAP: Record<string, { bg: string; color: string; icon: string }> = {
     'Matto': { bg: '#E0F2FE', color: '#0284C7', icon: 'rug' },
     'Puku / Juhlavaate': { bg: '#F3E8FF', color: '#9333EA', icon: 'tshirt-crew' },
     'Takki / Untuvatuote': { bg: '#FEF3C7', color: '#D97706', icon: 'jacket' },
