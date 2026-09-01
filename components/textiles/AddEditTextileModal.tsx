@@ -489,7 +489,7 @@ export const AddEditTextileModal: React.FC<Props> = ({
 
                         {/* 2. TEKSTIILIN NIMI */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionLabel}>Tekstiilin nimi tai tunniste *</Text>
+                            <Text style={styles.sectionLabel}>Tekstiilin oma lempinimi / tunniste *</Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="Esim. Olohuoneen villamatto, Musta juhlapuku..."
@@ -498,6 +498,9 @@ export const AddEditTextileModal: React.FC<Props> = ({
                                 onChangeText={setName}
                                 maxLength={80}
                             />
+                            <Text style={styles.helperText}>
+                                Tämä oma nimesi näkyy Omat tekstiilit -listallasi. Tilaukseen ja pesulalle kirjataan aina virallinen tuotenimi ({selectedProduct?.name || 'Tuote'}).
+                            </Text>
                         </View>
 
                         {/* 3. MITAT (NÄYTETÄÄN VAIN JOS YLLÄPITÄJÄ ON AKTIVOINUT MITAT TÄLLE TUOTTEELLE) */}
@@ -892,6 +895,12 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         fontSize: 15,
         color: '#0F172A',
+    },
+    helperText: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: 4,
+        lineHeight: 15,
     },
     textArea: {
         minHeight: 80,

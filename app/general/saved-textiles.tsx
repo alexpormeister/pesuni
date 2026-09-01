@@ -191,35 +191,24 @@ export default function SavedTextilesScreen() {
     const handleOrderWash = (item: SavedTextile) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 
-        // Etsitään sopiva tuote katalogista kategorian tai nimen perusteella
-        let matchedProduct = products.find(p => {
-            if (item.category === 'Matto') return p.product_id === 'mattopesu' || p.name.toLowerCase().includes('matto');
-            if (item.category === 'Puku / Juhlavaate') return p.product_id === 'standard-puku' || p.name.toLowerCase().includes('puku');
-            if (item.category === 'Takki / Untuvatuote') return p.product_id === 'prod_untuvatakki' || p.name.toLowerCase().includes('takki');
-            return false;
-        });
+        // Etsitään sopiva virallinen tuote katalogista
+        const matchedProduct = products.find(p =>
+            (item.product_id && p.product_id === item.product_id) ||
+            p.name.toLowerCase() === item.name.toLowerCase() ||
+            (item.category === 'Matto' && (p.product_id === 'mattopesu' || p.name.toLowerCase().includes('matto'))) ||
+            (item.category === 'Puku / Juhlavaate' && (p.product_id === 'standard-puku' || p.name.toLowerCase().includes('puku'))) ||
+            (item.category === 'Takki / Untuvatuote' && (p.product_id === 'prod_untuvatakki' || p.name.toLowerCase().includes('takki'))) ||
+            (item.category === 'Kodintekstiili / Verhot' && (p.product_id === 'verhopesu' || p.name.toLowerCase().includes('verho')))
+        );
 
-        // Oletushinta jos tuotetta ei löydy
-        let price = 45;
-        let pId = 'mattopesu';
-        let itemName = item.name;
-
-        if (matchedProduct) {
-            price = Number(matchedProduct.discount_price || matchedProduct.base_price || 45);
-            pId = matchedProduct.product_id;
-        } else if (item.category === 'Matto') {
-            price = 60;
-            pId = 'mattopesu';
-        }
-
-        // Jos matolla on mitat, liitetään ne selkeästi nimeen
-        if (item.square_meters) {
-            itemName = `${item.name} (${item.length_cm}×${item.width_cm} cm, ${item.square_meters} m²)`;
-        }
+        // Virallinen tuotenimi (esim. "Mattopesu" tai "Standard Puku"), jotta pesulalle ja kassalle menee oikea tuote
+        const officialProductName = matchedProduct?.name || (item.category === 'Matto' ? 'Mattopesu' : item.category);
+        const pId = matchedProduct?.product_id || item.product_id || 'mattopesu';
+        const price = Number(matchedProduct?.discount_price || matchedProduct?.base_price || (item.category === 'Matto' ? 60 : 45));
 
         dispatch(addToCart({
             id: pId,
-            name: itemName,
+            name: officialProductName,
             price: price,
             quantity: 1,
         }));
@@ -227,7 +216,7 @@ export default function SavedTextilesScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         Alert.alert(
             'Tuote lisätty ostoskoriin! 🧺',
-            `"${itemName}" on lisätty koriin. Haluatko siirtyä suoraan kassalle vai jatkaa selaamista?`,
+            `"${officialProductName}" (${item.name}) on lisätty ostoskoriin. Haluatko siirtyä suoraan kassalle vai jatkaa selaamista?`,
             [
                 { text: 'Jatka selaamista', style: 'cancel' },
                 {
