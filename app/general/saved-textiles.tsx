@@ -34,12 +34,12 @@ const CATEGORY_FILTERS = [
     { id: 'Muu', name: 'Muut' },
 ];
 
-const CATEGORY_ICON_MAP: Record<string, string> = {
-    'Matto': 'rug',
-    'Puku / Juhlavaate': 'tshirt-crew',
-    'Takki / Untuvatuote': 'jacket',
-    'Kodintekstiili / Verhot': 'curtains',
-    'Muu': 'tag-outline',
+const CATEGORY_STYLE_MAP: Record<string, { bg: string; color: string; icon: string }> = {
+    'Matto': { bg: '#E0F2FE', color: '#0284C7', icon: 'rug' },
+    'Puku / Juhlavaate': { bg: '#F3E8FF', color: '#9333EA', icon: 'tshirt-crew' },
+    'Takki / Untuvatuote': { bg: '#FEF3C7', color: '#D97706', icon: 'jacket' },
+    'Kodintekstiili / Verhot': { bg: '#DCFCE7', color: '#16A34A', icon: 'curtains' },
+    'Muu': { bg: '#F1F5F9', color: '#475569', icon: 'tag-outline' },
 };
 
 const formatDate = (dateStr?: string | null) => {
@@ -251,18 +251,35 @@ export default function SavedTextilesScreen() {
     }, [textiles, selectedCategory, searchQuery]);
 
     const renderTextileCard = ({ item }: { item: SavedTextile }) => {
-        const iconName = CATEGORY_ICON_MAP[item.category] || 'tag-outline';
+        const catStyle = CATEGORY_STYLE_MAP[item.category] || { bg: '#E0F7FF', color: '#00C2FF', icon: 'tag-outline' };
         const formattedWashDate = formatDate(item.last_washed_at);
+
+        // Etsitään linkitetty tuote kuvaa varten
+        const matchedProduct = products.find(p =>
+            (item.product_id && p.product_id === item.product_id) ||
+            p.name.toLowerCase() === item.name.toLowerCase() ||
+            (item.category === 'Matto' && (p.product_id === 'mattopesu' || p.name.toLowerCase().includes('matto'))) ||
+            (item.category === 'Puku / Juhlavaate' && (p.product_id === 'standard-puku' || p.name.toLowerCase().includes('puku'))) ||
+            (item.category === 'Takki / Untuvatuote' && (p.product_id === 'prod_untuvatakki' || p.name.toLowerCase().includes('takki'))) ||
+            (item.category === 'Kodintekstiili / Verhot' && (p.product_id === 'verhopesu' || p.name.toLowerCase().includes('verho')))
+        );
+
+        const displayImageUrl = item.photo_url || matchedProduct?.image_url;
 
         return (
             <View style={styles.card}>
                 {/* KORTIN YLÄOSA: KUVA/IKONI, NIMI, KATEGORIA, MENU */}
                 <View style={styles.cardHeader}>
-                    <View style={styles.cardIconBox}>
-                        {item.photo_url ? (
-                            <Image source={{ uri: item.photo_url }} style={styles.cardThumbnail} contentFit="cover" />
+                    <View style={[styles.cardIconBox, !displayImageUrl && { backgroundColor: catStyle.bg }]}>
+                        {displayImageUrl ? (
+                            <Image
+                                source={{ uri: displayImageUrl }}
+                                style={styles.cardThumbnail}
+                                contentFit="cover"
+                                transition={150}
+                            />
                         ) : (
-                            <MaterialCommunityIcons name={iconName as any} size={26} color="#00C2FF" />
+                            <MaterialCommunityIcons name={catStyle.icon as any} size={28} color={catStyle.color} />
                         )}
                     </View>
 
@@ -638,13 +655,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cardIconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
-        backgroundColor: '#E0F7FF',
+        width: 54,
+        height: 54,
+        borderRadius: 14,
+        backgroundColor: '#F8FAFC',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
     cardThumbnail: {
         width: '100%',
