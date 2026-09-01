@@ -86,11 +86,12 @@ export default function SavedTextilesScreen() {
             if (error) throw error;
             setTextiles(data || []);
 
-            // Haetaan myös tuotteet hintojen ja linkityksen mäppäystä varten
+            // Haetaan myös tuotteet hintojen, linkityksen ja tallennuskonfiguraation mäppäystä varten
             const { data: prodData } = await supabase
                 .from('products')
-                .select('product_id, name, base_price, discount_price')
-                .eq('is_active', true);
+                .select('id, product_id, name, description, image_url, base_price, discount_price, allow_customer_save, saved_textile_config')
+                .eq('is_active', true)
+                .order('sort_order', { ascending: true });
             setProducts(prodData || []);
         } catch (err: any) {
             console.error('Error fetching saved textiles:', err);
@@ -314,9 +315,15 @@ export default function SavedTextilesScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* MATERIAALI JA HOITO-OHJEET */}
-                {(item.material || item.care_instructions) && (
+                {/* MATERIAALI, VÄRI JA HOITO-OHJEET */}
+                {(item.material || item.color || item.care_instructions) && (
                     <View style={styles.tagsContainer}>
+                        {item.color && (
+                            <View style={[styles.infoPill, { backgroundColor: '#FDF4FF', borderColor: '#F0ABFC' }]}>
+                                <MaterialCommunityIcons name="palette-outline" size={12} color="#C026D3" style={{ marginRight: 4 }} />
+                                <Text style={[styles.infoPillText, { color: '#C026D3' }]}>{item.color}</Text>
+                            </View>
+                        )}
                         {item.material && (
                             <View style={styles.infoPill}>
                                 <Feather name="tag" size={12} color="#0284C7" style={{ marginRight: 4 }} />
@@ -503,6 +510,7 @@ export default function SavedTextilesScreen() {
                 onClose={() => setModalVisible(false)}
                 onSave={handleSaveTextile}
                 initialData={editingTextile}
+                products={products}
             />
         </SafeAreaView>
     );
