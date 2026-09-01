@@ -75,9 +75,11 @@ export default function CheckoutScreen() {
     const [deliverySlot, setDeliverySlot] = useState<any | null>(null);
 
     const [specialInstructions, setSpecialInstructions] = useState('');
-    const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('apple_google_pay');
+    const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('stripe');
     const [termsAccepted, setTermsAccepted] = useState(false);
+    const [saveToMyTextiles, setSaveToMyTextiles] = useState(true);
+    const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
 
@@ -382,6 +384,34 @@ export default function CheckoutScreen() {
                 }));
 
                 await supabase.from('order_items').insert(orderItemsToInsert);
+
+                // 🧺 AUTOMAATTINEN TALLENNUS OMIIN TEKSTIILIIN
+                if (saveToMyTextiles) {
+                    try {
+                        const savedTextilesPayload = cartItems.map(item => {
+                            const lowerName = item.name.toLowerCase();
+                            let cat = 'Muu';
+                            if (lowerName.includes('matto')) cat = 'Matto';
+                            else if (lowerName.includes('puku') || lowerName.includes('juhla')) cat = 'Puku / Juhlavaate';
+                            else if (lowerName.includes('takki') || lowerName.includes('untuva')) cat = 'Takki / Untuvatuote';
+                            else if (lowerName.includes('verho') || lowerName.includes('peitto') || lowerName.includes('lakana') || lowerName.includes('tyyny')) cat = 'Kodintekstiili / Verhot';
+
+                            return {
+                                user_id: user.id,
+                                name: item.name,
+                                category: cat,
+                                product_id: String(item.id),
+                                special_notes: specialInstructions || null,
+                                last_washed_at: new Date().toISOString(),
+                                last_order_id: createdOrder.id,
+                            };
+                        });
+
+                        await supabase.from('customer_saved_textiles').insert(savedTextilesPayload);
+                    } catch (saveErr) {
+                        console.warn('[CHECKOUT] Auto-save to textiles failed:', saveErr);
+                    }
+                }
             }
 
             if (pointsToUse > 0) {
@@ -605,7 +635,24 @@ export default function CheckoutScreen() {
                                 collapsibleItems={true}
                             />
 
-                            {/* 5. PALVELUEHTOJEN HYVÄKSYNTÄ */}
+                            {/* 5. TALLENNA OMIIN TEKSTIILIIN */}
+                            <TouchableOpacity
+                                style={styles.saveTextilesToggleRow}
+                                activeOpacity={0.8}
+                                onPress={() => setSaveToMyTextiles(!saveToMyTextiles)}
+                            >
+                                <View style={[styles.saveTextilesCheckbox, saveToMyTextiles && styles.saveTextilesCheckboxActive]}>
+                                    {saveToMyTextiles && <Feather name="check" size={13} color="#FFFFFF" />}
+                                </View>
+                                <View style={styles.saveTextilesTextCol}>
+                                    <Text style={styles.saveTextilesTitle}>Tallenna tekstiilit Omiin tekstiileihin</Text>
+                                    <Text style={styles.saveTextilesSubtitle}>
+                                        Tallenna tilauksen kohteet profiiliisi, niin tilaat pesun ensi kerralla yhdellä klikkauksella.
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+
+                            {/* 6. PALVELUEHTOJEN HYVÄKSYNTÄ */}
                             <TermsCheckbox
                                 onToggle={setTermsAccepted}
                                 isAccepted={termsAccepted}
@@ -828,5 +875,46 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: COLORS.warningText,
         lineHeight: 17,
+    },
+    saveTextilesToggleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0F9FF',
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+        borderRadius: 16,
+        padding: 14,
+        marginHorizontal: 16,
+        marginTop: 12,
+        marginBottom: 4,
+    },
+    saveTextilesCheckbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: '#94A3B8',
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    saveTextilesCheckboxActive: {
+        backgroundColor: '#00C2FF',
+        borderColor: '#00C2FF',
+    },
+    saveTextilesTextCol: {
+        flex: 1,
+    },
+    saveTextilesTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#0F172A',
+    },
+    saveTextilesSubtitle: {
+        fontSize: 11,
+        color: '#475569',
+        marginTop: 2,
+        lineHeight: 15,
     },
 });

@@ -66,6 +66,19 @@ const LocationBar: React.FC<LocationBarProps> = ({ onCartPress }) => {
                     </View>
                 </TouchableOpacity>
 
+                {/* 🧺 OMAT TEKSTIILIT -PIKAPAINIKE 🧺 */}
+                <TouchableOpacity
+                    onPress={() => router.push('/general/saved-textiles')}
+                    style={styles.textilesButton}
+                    activeOpacity={0.8}
+                >
+                    <FontAwesome5
+                        name="tshirt"
+                        size={16}
+                        color="#0284C7"
+                    />
+                </TouchableOpacity>
+
                 {/* 🛒 OSTOSKORIPAINIKE 🛒 */}
                 <TouchableOpacity
                     onPress={onCartPress}
@@ -85,7 +98,7 @@ const LocationBar: React.FC<LocationBarProps> = ({ onCartPress }) => {
                 </TouchableOpacity>
             </View>
 
-            {/* 🔽 DROPDOWN - OSOITTEEN MUOKKAUSPIKAVALINTA 🔽 */}
+            {/* 🔽 DROPDOWN - OSOITTEEN MUOKKAUS & OMAT TEKSTIILIT 🔽 */}
             {isDropdownVisible && (
                 <View style={styles.dropdownCard}>
                     <TouchableOpacity
@@ -100,6 +113,28 @@ const LocationBar: React.FC<LocationBarProps> = ({ onCartPress }) => {
                             <View>
                                 <Text style={styles.dropdownTitle}>Vaihda tai muokkaa osoitetta</Text>
                                 <Text style={styles.dropdownSubtitle}>Päivitä koti- tai nouto-osoite profiilista</Text>
+                            </View>
+                        </View>
+                        <Feather name="chevron-right" size={16} color="#CBD5E1" />
+                    </TouchableOpacity>
+
+                    <View style={styles.dropdownDivider} />
+
+                    <TouchableOpacity
+                        style={styles.dropdownActionRow}
+                        onPress={() => {
+                            setIsDropdownVisible(false);
+                            router.push('/general/saved-textiles');
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.dropdownLeft}>
+                            <View style={[styles.editIconCircle, { backgroundColor: '#E0F2FE' }]}>
+                                <FontAwesome5 name="tshirt" size={13} color="#0284C7" />
+                            </View>
+                            <View>
+                                <Text style={styles.dropdownTitle}>Omat tallennetut tekstiilit</Text>
+                                <Text style={styles.dropdownSubtitle}>Mattojen mitat, puvut ja pikavaraus</Text>
                             </View>
                         </View>
                         <Feather name="chevron-right" size={16} color="#CBD5E1" />
@@ -179,6 +214,17 @@ const styles = StyleSheet.create({
         color: COLORS.dark,
         flexShrink: 1,
     },
+    textilesButton: {
+        width: 42,
+        height: 42,
+        borderRadius: 14,
+        backgroundColor: '#F0F9FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+    },
     cartButton: {
         width: 44,
         height: 44,
@@ -232,6 +278,11 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingVertical: 6,
         paddingHorizontal: 6,
+    },
+    dropdownDivider: {
+        height: 1,
+        backgroundColor: '#F1F5F9',
+        marginVertical: 4,
     },
     dropdownLeft: {
         flexDirection: 'row',

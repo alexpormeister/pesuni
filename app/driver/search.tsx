@@ -371,8 +371,8 @@ export default function DriverSearchScreen() {
                     .eq('id', orderId);
             }
 
-            if (taskUpdateErr && orderUpdateErr) {
-                throw new Error(taskUpdateErr?.message || orderUpdateErr?.message || 'Keikan tallentaminen tietokantaan epäonnistui.');
+            if (taskUpdateErr) {
+                throw new Error(taskUpdateErr?.message || 'Keikan tallentaminen tietokantaan epäonnistui.');
             }
 
             // Jos delivery_tasks -riviä ei ollut vielä olemassa tälle tilaukselle, luodaan se

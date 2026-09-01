@@ -6,6 +6,7 @@ import {
     Image,
     Modal,
     Platform,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,

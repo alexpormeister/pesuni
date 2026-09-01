@@ -9,18 +9,18 @@ type SettingItem = {
     iconBg?: string;
     iconColor?: string;
     onPress: () => void;
-    badge?: number | null;
+    badge?: number | string | null;
 };
 
 interface SettingsListProps {
-    title: string;
+    title?: string;
     items: SettingItem[];
 }
 
 const SettingsList: React.FC<SettingsListProps> = ({ title, items }) => {
     return (
         <View style={styles.container}>
-            <Text style={styles.sectionTitle}>{title}</Text>
+            {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
             <View style={styles.listCard}>
                 {items.map((item, index) => {
                     const isLast = index === items.length - 1;
@@ -44,8 +44,8 @@ const SettingsList: React.FC<SettingsListProps> = ({ title, items }) => {
 
                             <Text style={styles.itemText}>{item.label}</Text>
 
-                            {/* BADGE JOS ON LUKEMATTOMIA VIESTEJÄ */}
-                            {Boolean(item.badge && item.badge > 0) && (
+                            {/* BADGE */}
+                            {Boolean(item.badge !== undefined && item.badge !== null && item.badge !== '' && item.badge !== 0) && (
                                 <View style={styles.unreadBadge}>
                                     <Text style={styles.unreadBadgeText}>{item.badge}</Text>
                                 </View>

@@ -23,6 +23,7 @@ const ProfileScreen = () => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [points, setPoints] = useState(0);
     const [orderCount, setOrderCount] = useState(0);
+    const [savedTextilesCount, setSavedTextilesCount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchProfileStats = useCallback(async () => {
@@ -32,6 +33,7 @@ const ProfileScreen = () => {
             if (!user) {
                 setPoints(0);
                 setOrderCount(0);
+                setSavedTextilesCount(0);
                 setUnreadCount(0);
                 setIsLoading(false);
                 return;
@@ -54,7 +56,15 @@ const ProfileScreen = () => {
 
             setOrderCount(countData || 0);
 
-            // 3. Hae lukemattomat viestit (vain AVOIMISTA keskusteluista)
+            // 3. Laske tallennettujen tekstiilien määrä
+            const { count: textilesCount } = await supabase
+                .from('customer_saved_textiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+
+            setSavedTextilesCount(textilesCount || 0);
+
+            // 4. Hae lukemattomat viestit (vain AVOIMISTA keskusteluista)
             const { data: openUnreadChats } = await supabase
                 .from('support_chats')
                 .select('id, is_read, status')
@@ -85,6 +95,7 @@ const ProfileScreen = () => {
             .channel('profile-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchProfileStats())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'support_chats' }, () => fetchProfileStats())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_saved_textiles' }, () => fetchProfileStats())
             .subscribe();
 
         return () => {
@@ -110,6 +121,15 @@ const ProfileScreen = () => {
     };
 
     const accountSettings = [
+        {
+            id: 'saved-textiles',
+            label: 'Omat tekstiilit',
+            icon: 'tshirt',
+            iconBg: '#E0F7FF',
+            iconColor: '#0284C7',
+            badge: savedTextilesCount > 0 ? `${savedTextilesCount} kpl` : undefined,
+            onPress: () => router.push('/general/saved-textiles')
+        },
         {
             id: '1',
             label: 'Yhteystiedot',
